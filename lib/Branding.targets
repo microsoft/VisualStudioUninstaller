@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <MajorVersion Condition="'$(MajorVersion)'==''">1</MajorVersion>
+    <MinorVersion Condition="'$(MinorVersion)'==''">0</MinorVersion>
+    <!-- Valid tokens include: alpha, beta, rc, and rtm. -->
+    <ReleaseToken Condition="'$(ReleaseToken)'==''">alpha</ReleaseToken>
+  </PropertyGroup>
+  <Target Name="GenerateBrandingInfo">
+    <Message Importance="low" Text="Generating branding information." />
+    <PropertyGroup>
+      <!-- Use the same epoch and version scheme as documented by the AssemblyVersionAttribute. -->
+      <BuildVersion Condition="'$(BuildVersion)' == ''">$([System.DateTime]::Now.Subtract($([System.DateTime]::Parse("01/01/2000 00:00:00"))).Days)</BuildVersion>
+      <RevisionNumber Condition="'$(RevisionNumber)' == ''">$([System.Convert]::ToInt32($([MSBuild]::Divide($([System.DateTime]::Now.Subtract($([System.DateTime]::Parse("00:00:00"))).TotalSeconds), 2))))</RevisionNumber>
+      <ProductVersion Condition="'$(ReleaseToken)' == 'rtm'">$(MajorVersion).$(MinorVersion).$(BuildVersion)</ProductVersion>
+      <ProductVersion Condition="'$(ReleaseToken)' != 'rtm'">$(MajorVersion).$(MinorVersion).$(BuildVersion)-$(ReleaseToken)-$(RevisionNumber)</ProductVersion>
+    </PropertyGroup>
+    <Message Text="Generated ProductVersion &quot;$(ProductVersion)&quot;." />
+  </Target>
+</Project>

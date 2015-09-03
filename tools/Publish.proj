@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0" DefaultTargets="Publish">
+  <PropertyGroup>
+    <Configuration Condition="'$(Configuration)'==''">Release</Configuration>
+    <PublishDir Condition="'$(PublishDir)'!='' And !HasTrailingSlash('$(PublishDir)')">$(PublishDir)\</PublishDir>
+  </PropertyGroup>
+  <Import Project="$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildProjectDirectory), Uninstaller.sln))\lib\Common.props" />
+  <ItemGroup>
+    <BuildOutput Include="$(OutDir)\*.exe;$(OutDir)\Microsoft.VisualStudio.Setup*.dll" Exclude="$(OutDir)\Microsoft.VisualStudio.Setup.Resources*.dll;$(OutDir)\*.test.dll" />
+    <PublishItem Include="@(BuildOutput);$(OutDir)\*.dll" Exclude="$(OutDir)\Microsoft.VisualStudio.Setup.Resources*.dll;$(OutDir)\*.test.dll;$(OutDir)\moq.dll" />
+    <ProjectReference Include ="$(SourceDir)\**\*.*proj">
+      <Properties>Configuration=$(Configuration);Platform=$(Platform)</Properties>
+    </ProjectReference>
+  </ItemGroup>
+  <Target Name="CheckRequirements">
+    <Error Condition="'$(PublishDir)'==''" Text="You must pass the PublishDir property value for where assemblies should be copied." />
+  </Target>
+  <Target Name="Build" Outputs="@(BuildOutput)">
+    <MSBuild Projects="@(ProjectReference)" Properties="%(ProjectReference.Properties)" RunEachTargetSeparately="true" Targets="Build" UseResultsCache="true" />
+  </Target>
+  <PropertyGroup>
+    <PublishDependsOn>
+      CheckRequirements;
+      Build;
+      $(PublishDependsOn);
+    </PublishDependsOn>
+  </PropertyGroup>
+  <Target Name="Publish" Inputs="@(PublishItem)" Outputs="@(PublishItem->'$(PublishDir)%(Filename)%(Extension)')" DependsOnTargets="$(PublishDependsOn)">
+    <RemoveDuplicates Inputs="@(PublishItem)">
+      <Output TaskParameter="Filtered" ItemName="_FilteredPublishItem"/>
+    </RemoveDuplicates>
+    <Copy SourceFiles="@(_FilteredPublishItem)" DestinationFolder="$(PublishDir)" OverwriteReadOnlyFiles="true" SkipUnchangedFiles="true" />
+  </Target>
+</Project>

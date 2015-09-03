@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
+    <Platform Condition="'$(Platform)' == ''">AnyCPU</Platform>
+    <RootNamespace>Microsoft.VisualStudio.Setup</RootNamespace>
+    <RestorePackages>true</RestorePackages>
+  </PropertyGroup>
+  <PropertyGroup>
+    <SolutionDir Condition="'$(SolutionDir)' == '' Or '$(SolutionDir)' == '*Undefined*'">$([System.IO.Path]::GetFullPath("$(MSBuildThisFileDirectory).."))</SolutionDir>
+    <SolutionDir Condition="!HasTrailingSlash('$(SolutionDir)')">$(SolutionDir)\</SolutionDir>
+    <OutDir Condition="'$(OutDir)' == ''">$(SolutionDir)bin\$(Configuration)</OutDir>
+    <OutDir Condition="!HasTrailingSlash('$(OutDir)')">$(OutDir)\</OutDir>
+    <OutputPath>$(OutDir)</OutputPath>
+    <PackageOutputDir>$(OutDir.Trim('\\'))</PackageOutputDir>
+    <SourceDir>$(SolutionDir)src</SourceDir>
+  </PropertyGroup>
+  <Import Project="Common$(MSBuildProjectExtension).props" Condition="Exists('Common$(MSBuildProjectExtension).props')" />
+  <PropertyGroup>
+    <CommonPropertiesDefined>true</CommonPropertiesDefined>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageSource Include="https://ms-nuget.cloudapp.net/api/v2/" />
+    <PackageSource Include="https://www.nuget.org/api/v2/" />
+  </ItemGroup>
+</Project>
