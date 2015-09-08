@@ -15,9 +15,9 @@ namespace Microsoft.VS.ConfigurationManager
         private const string PackageCacheValue = @"Package Cache";
         private const string AppName = "Bundle";
 
+        // TODO: do these vars need to be static?
         static private string temp;
         static private string programdata;
-
         static private string LogLocation;
         static private string packagecache;
         static private string cache = string.Empty;
@@ -92,6 +92,7 @@ namespace Microsoft.VS.ConfigurationManager
             _installed = Directory.Exists(LocalInstallLocation) ? true : false;
         }
 
+        // TODO: does this need to be static.
         static private void SetObjectVariables()
         {
             temp = System.IO.Path.GetTempPath();
@@ -116,7 +117,7 @@ namespace Microsoft.VS.ConfigurationManager
             set { bundleuninstallarguments = value.TrimEnd() + " "; }
         }
         /// <summary>Location of the package cache on disk</summary>
-        static public string LocalInstallLocation { get; set; }
+        public string LocalInstallLocation { get; set; }
 
         /// <summary>Bundle product code</summary>
         public System.Guid BundleId
