@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="Common.props" Condition="'$(CommonPropertiesDefined)' != 'true'" />
+  <Target Name="UpdateBuildCommand" BeforeTargets="BuildPackage" DependsOnTargets="GenerateBrandingInfo">
+    <PropertyGroup>
+      <_OutDir>$(OutDir.Trim('\\'))</_OutDir>
+      <BuildCommand Condition="'$(BuildCommand)' != ''">$(BuildCommand) -BasePath "$(_OutDir)" -Properties "Src=$(SourceDir);Version=$(ProductVersion)" -NoPackageAnalysis -Verbosity Detailed</BuildCommand>
+    </PropertyGroup>
+  </Target>
+</Project>

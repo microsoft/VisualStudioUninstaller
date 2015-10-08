@@ -1,0 +1,87 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <AssemblyOriginatorKeyFile>$(SolutionDir)lib\PublicKey.snk</AssemblyOriginatorKeyFile>
+    <DelaySign>true</DelaySign>
+    <SignAssembly>true</SignAssembly>
+  </PropertyGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="Branding.targets" />
+  <Import Project="Common.NuGet.targets" />
+  <!-- Signing -->
+  <ItemGroup>
+    <Compile Include="$(SolutionDir)lib\SigningInfo.cs">
+      <Link>Properties\SigningInfo.cs</Link>
+    </Compile>
+  </ItemGroup>
+  <Target Name="PopulateFilesToSign" BeforeTargets="AfterBuild" Outputs="@(FilesToSign)" Condition="!$(MSBuildProjectName.Contains('Test'))">
+    <ItemGroup>
+      <_FilesToSign Include="$(TargetPath)" Condition="'$(SignOutput)'!='false'" />
+      <_FilesToSign Include="$(AdditionalFilesToSign)" />
+      <FilesToSign Include="@(_FilesToSign)" Condition="'%(Extension)'=='.exe'">
+        <Authenticode>Microsoft</Authenticode>
+        <StrongName>StrongName</StrongName>
+      </FilesToSign>
+      <FilesToSign Include="@(_FilesToSign)" Condition="'%(Extension)'=='.dll'">
+        <StrongName>StrongName</StrongName>
+      </FilesToSign>
+      <FilesToSign Include="@(_FilesToSign)" Condition="'%(Extension)'=='.vsix'">
+        <Authenticode>VSIX</Authenticode>
+      </FilesToSign>
+    </ItemGroup>
+    <Message Condition="'%(FilesToSign.Identity)'!=''" Text="Will sign &quot;%(FilesToSign.Identity)&quot;" />
+  </Target>
+  <!-- Branding -->
+  <PropertyGroup>
+    <BrandingInfoFile>$(SolutionDir)obj\$(Configuration)\BrandingInfo.cs</BrandingInfoFile>
+    <BuildDependsOn>
+      WriteBrandingInfo;
+      $(BuildDependsOn);
+    </BuildDependsOn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(BrandingInfoFile)">
+      <Link>Properties\BrandingInfo.cs</Link>
+    </Compile>
+  </ItemGroup>
+  <Target Name="WriteBrandingInfo"
+          DependsOnTargets="GenerateBrandingInfo"
+          Condition="'$(BrandingInfoFile)' != ''"
+          Inputs="@(Compile);@(EmbeddedResources);$(MSBuildProjectFullPath);$(MSBuildThisFileFullPath)"
+          Outputs="$(BrandingInfoFile)">
+    <ItemGroup>
+      <_BrandingInfoFile Include="$(BrandingInfoFile)"/>
+    </ItemGroup>
+    <ItemGroup>
+      <_BrandingInfo Include="System.Reflection.AssemblyCompanyAttribute">
+        <_Parameter1>Microsoft Corporation</_Parameter1>
+      </_BrandingInfo>
+      <_BrandingInfo Include="System.Reflection.AssemblyCopyrightAttribute">
+        <_Parameter1>Copyright (C) Microsoft Corporation. All rights reserved.</_Parameter1>
+      </_BrandingInfo>
+      <_BrandingInfo Include="System.Reflection.AssemblyProductAttribute">
+        <_Parameter1>Visual Studio</_Parameter1>
+      </_BrandingInfo>
+      <_BrandingInfo Include="System.Resources.NeutralResourcesLanguageAttribute">
+        <_Parameter1>en</_Parameter1>
+      </_BrandingInfo>
+      <_BrandingInfo Include="System.Reflection.AssemblyVersionAttribute">
+        <_Parameter1>$(MajorVersion).$(MinorVersion).0.0</_Parameter1>
+      </_BrandingInfo>
+      <_BrandingInfo Include="System.Reflection.AssemblyFileVersionAttribute">
+        <_Parameter1>$(MajorVersion).$(MinorVersion).$(BuildVersion).$(RevisionNumber)</_Parameter1>
+      </_BrandingInfo>
+      <!-- See http://semver.org/ and https://ms-nuget.cloudapp.net/authoring for more information about semantic versioning and package naming. -->
+      <_BrandingInfo Include="System.Reflection.AssemblyInformationalVersionAttribute">
+        <_Parameter1 Condition="'$(ReleaseToken)' == 'rtm'">$(MajorVersion).$(MinorVersion).$(BuildVersion)</_Parameter1>
+        <_Parameter1 Condition="'$(ReleaseToken)' != 'rtm'">$(MajorVersion).$(MinorVersion).$(BuildVersion)-$(ReleaseToken)-$(RevisionNumber)</_Parameter1>
+      </_BrandingInfo>
+    </ItemGroup>
+    <MakeDir Directories="@(_BrandingInfoFile->'%(RootDir)%(Directory)')"/>
+    <WriteCodeFragment Language="$(Language)"
+                       OutputFile="$(BrandingInfoFile)"
+                       AssemblyAttributes="@(_BrandingInfo)">
+      <Output TaskParameter="OutputFile" ItemName="FileWrites"/>
+    </WriteCodeFragment>
+  </Target>
+</Project>

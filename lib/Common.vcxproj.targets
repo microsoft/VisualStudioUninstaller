@@ -1,0 +1,71 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- Signing -->
+  <Target Name="PopulateFilesToSign" BeforeTargets="AfterBuild" Outputs="@(FilesToSign)" Condition="!$(MSBuildProjectName.Contains('Test'))">
+    <ItemGroup>
+      <_FilesToSign Include="$(TargetPath)" Condition="'$(SignOutput)'!='false'" />
+      <_FilesToSign Include="$(AdditionalFilesToSign)" />
+      <FilesToSign Include="@(_FilesToSign)" Condition="'%(Extension)'=='.exe' Or '%(Extension)'=='.dll'">
+        <Authenticode>Microsoft</Authenticode>
+      </FilesToSign>
+    </ItemGroup>
+    <Message Condition="'%(FilesToSign.Identity)'!=''" Text="Will sign &quot;%(FilesToSign.Identity)&quot;" />
+  </Target>
+  <!-- Branding -->
+  <PropertyGroup>
+    <BrandingInfoFile>$(SolutionDir)obj\$(Configuration)\BrandingInfo.h</BrandingInfoFile>
+    <BuildDependsOn>
+      WriteBrandingInfo;
+      $(BuildDependsOn);
+    </BuildDependsOn>
+  </PropertyGroup>
+  <ItemGroup>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Branding.rc">
+      <Link>Branding.rc</Link>
+    </ClInclude>
+  </ItemGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(SolutionDir)lib;$(SolutionDir)obj\$(Configuration);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <ResourceCompile>
+      <AdditionalIncludeDirectories>$(SolutionDir)lib;$(SolutionDir)obj\$(Configuration);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+  </ItemDefinitionGroup>
+  <Import Project="Branding.targets" />
+  <Target Name="WriteBrandingInfo"
+          DependsOnTargets="GenerateBrandingInfo"
+          Condition="'$(BrandingInfoFile)' != ''"
+          Inputs="$(BrandingInfoFile);@(ClInclude);@(ClCompile);@(ResourceCompile);$(MSBuildProjectFullPath);$(MSBuildThisFileFullPath)"
+          Outputs="$(BrandingInfoFile)">
+    <ItemGroup>
+      <_BrandingInfoFile Include="$(BrandingInfoFile)"/>
+    </ItemGroup>
+    <ItemGroup>
+      <_BrandingInfo Include="
+// auto-generated
+#ifndef _BRANDINGINFO_H_
+#define _BRANDINGINFO_H_
+
+#define MAJOR_VERSION $(MajorVersion)
+#define MINOR_VERSION $(MinorVersion)
+#define BUILD_VERSION $(BuildVersion)
+#define REVISION_NUMBER $(RevisionNumber)
+" />
+      <_BrandingInfo Condition="'$(ReleaseToken)' != 'rtm'" Include="
+#define vwzProductVersion &quot;$(MajorVersion).$(MinorVersion).$(BuildVersion)-$(ReleaseToken)-$(RevisionNumber)&quot;
+" />
+      <_BrandingInfo Condition="'$(ReleaseToken)' == 'rtm'" Include="
+#define vwzProductVersion &quot;$(MajorVersion).$(MinorVersion).$(BuildVersion)&quot;
+" />
+      <_BrandingInfo Include="
+#endif // _BRANDINGINFO_H_
+" />
+    </ItemGroup>
+    <MakeDir Directories="@(_BrandingInfoFile->'%(RootDir)%(Directory)')"/>
+    <WriteLinesToFile Overwrite="true" File="$(BrandingInfoFile)" Lines="@(_BrandingInfo)" />
+    <ItemGroup>
+      <FileWrites Include="$(BrandingInfoFile)" />
+    </ItemGroup>
+  </Target>
+</Project>

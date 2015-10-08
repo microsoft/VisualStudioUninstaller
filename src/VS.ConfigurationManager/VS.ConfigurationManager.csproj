@@ -1,0 +1,68 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildProjectDirectory), Uninstaller.sln))\lib\Common.props" />
+  <PropertyGroup>
+    <ProjectGuid>{CACCC6E1-FCB8-4DBE-9159-0F8EAA69D27A}</ProjectGuid>
+    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+  </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject />
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
+    <DefineConstants>TRACE;DEBUG;DOTNETFRAMEWORK35;</DefineConstants>
+    <CodeAnalysisRuleSet>ManagedMinimumRules.ruleset</CodeAnalysisRuleSet>
+    <RunCodeAnalysis>false</RunCodeAnalysis>
+    <CodeAnalysisIgnoreGeneratedCode>false</CodeAnalysisIgnoreGeneratedCode>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ProjectGuid>{CACCC6E1-FCB8-4DBE-9159-0F8EAA69D27A}</ProjectGuid>
+    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|AnyCPU'">
+    <DefineConstants>TRACE;DOTNETFRAMEWORK35;</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup>
+    <AssemblyName>Setup.VS.ConfigurationManager</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.Deployment.WindowsInstaller, Version=3.0.0.0, Culture=neutral, PublicKeyToken=ce35f76fcda82bad, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>$(SolutionDir)lib\wix37\Microsoft.Deployment.WindowsInstaller.dll</HintPath>
+    </Reference>
+    <Reference Include="WiX, Version=3.0.0.0, Culture=neutral, PublicKeyToken=ce35f76fcda82bad, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>$(SolutionDir)lib\wix37\Microsoft.Deployment.WindowsInstaller.Package.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Bundle.cs" />
+    <Compile Include="Filter.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SystemSettings.cs" />
+    <Compile Include="UninstallAction.cs" />
+    <Compile Include="Primitives.cs" />
+    <Compile Include="Package.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="External\Microsoft.Deployment.WindowsInstaller.dll" />
+    <Content Include="External\wix.dll" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="$(SourceDir)\VS.ConfigurationManager.Support\VS.ConfigurationManager.Support.csproj">
+      <Project>{13c73873-a5ed-42de-97f0-a3b2d7a1d76f}</Project>
+      <Name>VS.ConfigurationManager.Support</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(SolutionDir)lib\Common.targets" />
+</Project>
