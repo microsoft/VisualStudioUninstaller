@@ -19,6 +19,33 @@ Mailing list/contacts/forums
 ========
 TBD
 
+Usage
+========
+
+How to debug Total Uninstaller remotely?
+Uncomment the following lines will not execute the actual uninstall.  A debug flag will be added in the future.
+           // uti.bDebug = op.Debug; ip.DebugReporting = op.Debug;
+            //ip.DoNotExecuteProcess = true;
+Note: Do not run this on your development machine without setting the DoNotExecuteProcess flag.  This will prevent the application from uninstalling the very development environment you are working from.   To get the most out of the debug experience, I recommend the following:
+
+	1. Create a VM with Dev14 installed.
+	2. Start the 64-bit remote debugger with administrative privileges
+	3. Copy the debug Bin directory to the VM
+	4. Run the application with Administrative privileges
+	5. Create a snapshot of the machine using hyper-v
+	6. Start a remote debugging session to your VM and attach
+	7. Step through to your hearts delight.
+	8. If you find something you don’t like, restore the snapshot and recopy the Bin directory and go to step 6 again.
+
+Using Total Uninstall:
+	1. The user identifies which SKU of which release he wants to uninstall.
+	2. The user downloads one or more data files (from DataFiles folder) to a local folder.
+	3. The user executes Total Uninstaller and then "dir" to the directory containing the config files.
+	4. The user executes "load" command to the config files.
+	5. The user executes "list" to show which SKU and release is selected and installed.
+	6. The user executes "select" to select which SKU, release, version he wants to uninstall.
+The user executes "uninstall" to perform the total uninstall.
+
 Road map
 ========
 TBD
