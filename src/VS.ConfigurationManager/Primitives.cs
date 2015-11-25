@@ -370,8 +370,8 @@ namespace Microsoft.VS.ConfigurationManager
         ///           hydrate the object model for a list of InstallableItem.
         ///      </para>
         ///      <para>
-        ///           It specifically takes a directory to read all XML files associated. If an
-        ///           invalid XML file is found, it will report an error and the loop will continue.
+        ///           It specifically takes a directory to read all BIN files associated. If an
+        ///           invalid BIN file is found, it will report an error and the loop will continue.
         ///      </para>
         /// </summary>
         /// <param name="value"></param>
@@ -407,7 +407,7 @@ namespace Microsoft.VS.ConfigurationManager
             if (Processed)
             {
                 Logger.Log(String.Format(CultureInfo.InvariantCulture, "File path: {0} Files saved: {1}", this.DataFilesPath, installable.Count().ToString(CultureInfo.InvariantCulture)));
-                BundlesToFiles(installable, this.DataFilesPath, FILETYPE_XML);
+                BundlesToFiles(installable, this.DataFilesPath, FILETYPE_BIN);
             }
             else
             {
@@ -647,7 +647,7 @@ namespace Microsoft.VS.ConfigurationManager
 
         private const string FILETYPE_WIXPDB = "WixPdb";
 
-        private const string FILETYPE_XML = "XML";
+        private const string FILETYPE_BIN = "BIN";
 
         private const string WIXBUNDLE = "WixBundle";
 
@@ -778,7 +778,7 @@ namespace Microsoft.VS.ConfigurationManager
             return installable;
         }
 
-        private ICollection<Bundle> FilesToBundles(string directory, string ext = FILETYPE_XML)
+        private ICollection<Bundle> FilesToBundles(string directory, string ext = FILETYPE_BIN)
         {
             ICollection<Bundle> outObj = new List<Bundle>();
             var di = new DirectoryInfo(directory);
@@ -794,7 +794,7 @@ namespace Microsoft.VS.ConfigurationManager
                 }
                 else
                 {
-                    // Iterate through all the XML files in the given directory. In case one is
+                    // Iterate through all the BIN files in the given directory. In case one is
                     // passed in which is incorrect, the ReadFile function is wrapped in a try
                     // catch.
                     var allfiles = System.IO.Directory.GetFiles(directory);
@@ -868,8 +868,8 @@ namespace Microsoft.VS.ConfigurationManager
                         if (releases.Where(x => x.Name == filenamewithoutextension) != null)
                         {
                             // Update values to use the file instead
-                            releases.FirstOrDefault(x => x.Name == filenamewithoutextension).FileType = FILETYPE_XML;
-                            releases.FirstOrDefault(x => x.Name == filenamewithoutextension).xmlPath = Path.Combine(path, fileitem);
+                            releases.FirstOrDefault(x => x.Name == filenamewithoutextension).FileType = FILETYPE_BIN;
+                            releases.FirstOrDefault(x => x.Name == filenamewithoutextension).binPath = Path.Combine(path, fileitem);
                         }
                         else // If there is no wixpdb does not exist, pull data from the file to populate releases
                         {
@@ -877,9 +877,9 @@ namespace Microsoft.VS.ConfigurationManager
                             {
                                 var tempbundle = FileToBundle(fileitem);
 
-                                var rel = new Bundle(tempbundle.BundleId, tempbundle.Name, tempbundle.Version, "", path, FILETYPE_XML, false, tempbundle.Packages)
+                                var rel = new Bundle(tempbundle.BundleId, tempbundle.Name, tempbundle.Version, "", path, FILETYPE_BIN, false, tempbundle.Packages)
                                 {
-                                    xmlPath = Path.Combine(path, fileitem)
+                                    binPath = Path.Combine(path, fileitem)
                                 };
                                 rels.Add(rel);
                                 tempbundle = null;
@@ -975,7 +975,7 @@ namespace Microsoft.VS.ConfigurationManager
                         foreach (Bundle rel in rels)
                         {
                             var filetype = rel.FileType;
-                            var filepath = (filetype == FILETYPE_WIXPDB) ? rel.Path : rel.xmlPath;
+                            var filepath = (filetype == FILETYPE_WIXPDB) ? rel.Path : rel.binPath;
                             if (getall)
                             {
                                 filetype = FILETYPE_WIXPDB;
@@ -1045,27 +1045,27 @@ namespace Microsoft.VS.ConfigurationManager
                     }
                     break;
 
-                case FILETYPE_XML:
-                    var xmlload = LoadFromFile(filepath);
+                case FILETYPE_BIN:
+                    var binload = LoadFromFile(filepath);
 
-                    rel.FileType = string.IsNullOrEmpty(rel.FileType) ? xmlload.FileType : rel.FileType;
-                    rel.BundleId = rel.BundleId.ToString().Count() == 0 ? xmlload.BundleId : rel.BundleId;
+                    rel.FileType = string.IsNullOrEmpty(rel.FileType) ? binload.FileType : rel.FileType;
+                    rel.BundleId = rel.BundleId.ToString().Count() == 0 ? binload.BundleId : rel.BundleId;
 
                     if (rel.Packages == null) // if the Packages object is null, we have no MSIs listed in the bundle
                     {
-                        foreach (Package package in xmlload.Packages)
+                        foreach (Package package in binload.Packages)
                         {
                             rel.Packages.Add(package);
                         }
                     }
-                    rel.Name = string.IsNullOrEmpty(rel.Name) ? xmlload.Name : rel.Name;
-                    rel.xmlPath = xmlload.Path;
-                    rel.ReleasePdb = string.IsNullOrEmpty(rel.ReleasePdb) ? xmlload.ReleasePdb : rel.ReleasePdb;
-                    rel.Version = rel.Version == null ? xmlload.Version : rel.Version;
-                    rel.Selected = rel.Selected ? rel.Selected : xmlload.Selected;
+                    rel.Name = string.IsNullOrEmpty(rel.Name) ? binload.Name : rel.Name;
+                    rel.binPath = binload.Path;
+                    rel.ReleasePdb = string.IsNullOrEmpty(rel.ReleasePdb) ? binload.ReleasePdb : rel.ReleasePdb;
+                    rel.Version = rel.Version == null ? binload.Version : rel.Version;
+                    rel.Selected = rel.Selected ? rel.Selected : binload.Selected;
 
                     installables.Add(rel);
-                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "Successfully loaded: {0} [{1}]", rel.Name, FILETYPE_XML));
+                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "Successfully loaded: {0} [{1}]", rel.Name, FILETYPE_BIN));
                     break;
             }
         }

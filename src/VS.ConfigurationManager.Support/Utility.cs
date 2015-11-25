@@ -136,7 +136,7 @@ namespace Microsoft.VS.ConfigurationManager.Support
         #region Private Fields
 
         private const string FILETYPE_WIXPDB = "WixPdb";
-        private const string FILETYPE_XML = "XML";
+        private const string FILETYPE_BIN = "BIN";
         private const string WIXBUNDLE = "WixBundle";
 
         static private string temp = System.IO.Path.GetTempPath();

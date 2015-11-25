@@ -160,7 +160,7 @@ namespace Microsoft.VS.ConfigurationManager
         /// <summary>
         /// Location of the serialized config file
         /// </summary>
-        public string xmlPath { get; set; }
+        public string binPath { get; set; }
 
         private bool _installed;
 
