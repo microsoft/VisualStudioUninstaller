@@ -352,7 +352,7 @@ namespace Microsoft.VS.ConfigurationManager
             {
                 // Get all files that are in the content directory. Record them as a Bundle for
                 // later usage. Additionally, check the install state of each Bundle.
-                releases = null;
+                releases = new List<Bundle>();
                 GetContent(ref releases, DataFilesPath);
                 ReleaseOutput = String.IsNullOrEmpty(releaseoutput) ? GetReleases : releaseoutput;
                 Logger.Log(String.Format(CultureInfo.InvariantCulture, "Initialize called successfully."), Logger.MessageLevel.Information, AppName);
