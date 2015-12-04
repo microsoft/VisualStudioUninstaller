@@ -7,7 +7,7 @@ Please fork and send pull requests.
 
 ### Clone the repo
 ```bash
-git clone https://github.com/Microsoft/vs.uninstaller
+git clone https://github.com/Microsoft/VisualStudioUninstaller.git
 ```
 
 ### Build Pre-reqs
