@@ -865,11 +865,11 @@ namespace Microsoft.VS.ConfigurationManager
                         // Does a PDB exist for the file that we are reading?
                         var filenamewithoutextension = Path.GetFileNameWithoutExtension(fileitem);
 
-                        if (releases.Where(x => x.Name == filenamewithoutextension) != null)
+                        if (releases.Where(x => x.Name == filenamewithoutextension).Count() != 0)
                         {
                             // Update values to use the file instead
-                            releases.FirstOrDefault(x => x.Name == filenamewithoutextension).FileType = FILETYPE_BIN;
-                            releases.FirstOrDefault(x => x.Name == filenamewithoutextension).binPath = Path.Combine(path, fileitem);
+                            releases.First(x => x.Name == filenamewithoutextension).FileType = FILETYPE_BIN;
+                            releases.First(x => x.Name == filenamewithoutextension).binPath = Path.Combine(path, fileitem);
                         }
                         else // If there is no wixpdb does not exist, pull data from the file to populate releases
                         {
