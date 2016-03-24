@@ -643,7 +643,7 @@ namespace Microsoft.VS.ConfigurationManager
 
         private const string CHAINMSIPACKAGE = "ChainMsiPackage";
 
-        private const string CHAINPACKAGEINFO = "ChainPackageInfo";
+        private const string UXPACKAGEBEHAVIOR = "UxPackageBehavior";
 
         private const string FILETYPE_WIXPDB = "WixPdb";
 
@@ -672,9 +672,36 @@ namespace Microsoft.VS.ConfigurationManager
         #endregion Private Fields
 
         #region Private Methods
-        private static ICollection<Package> GetMSIDataFromTable(Bundle bundle, Wix.Table chainmsipackageTable, Wix.Table cpiTable)
+        private static ICollection<Package> GetMSIDataFromTable(Bundle bundle, Wix.Table chainmsipackageTable, Wix.Table uxPackageBehavior)
         {
             try {
+                Dictionary<string, string> uxPackageBehaviorDict = new Dictionary<string, string>();
+                if (uxPackageBehavior != null)
+                {
+                    foreach (Wix.Row msirow in uxPackageBehavior.Rows)
+                    {
+                        string packageId = string.Empty;
+                        string reallyPerm = string.Empty;
+                        foreach (Wix.Field field in msirow.Fields)
+                        {
+                            switch (field.Column.Name.ToString(CultureInfo.InvariantCulture).ToUpperInvariant())
+                            {
+                                case "PackageId":
+                                    packageId = field.Data.ToString();
+                                    break;
+                                case "ReallyPermanent":
+                                    reallyPerm = field.Data.ToString();
+                                    break;
+
+                            }
+                        }
+                        if (!string.IsNullOrEmpty(packageId) && !uxPackageBehaviorDict.ContainsKey(packageId))
+                        {
+                            uxPackageBehaviorDict.Add(packageId, reallyPerm);
+                        }
+                    }
+                }
+
                 foreach (Wix.Row msirow in chainmsipackageTable.Rows)
                 {
                     var msi = new Package();
@@ -705,48 +732,17 @@ namespace Microsoft.VS.ConfigurationManager
                                 break;
                         }
                     }
+
+                    // if the package is really perm, then, don't uninstall it.
+                    if (!string.IsNullOrEmpty(msi.ChainingPackage)
+                        && uxPackageBehaviorDict.ContainsKey(msi.ChainingPackage) 
+                        && uxPackageBehaviorDict[msi.ChainingPackage].Equals("yes", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
                     bundle.Packages.Add(msi);
                 }
-
-                if (cpiTable != null)
-                {
-                    foreach (Wix.Row packageinforow in cpiTable.Rows)
-                    {
-                        if (packageinforow.Fields[1].Data.ToString().ToUpperInvariant() == "MSU")
-                        {
-                            var msu = new Package();
-
-                            foreach (Wix.Field field in packageinforow.Fields)
-                            {
-                                switch (field.Column.Name.ToString(CultureInfo.InvariantCulture).ToUpperInvariant())
-                                {
-                                    case "ID": // id 0
-                                        msu.ChainingPackage = field.Data.ToString();
-                                        break;
-
-                                    case "MSUKB": // id 13
-                                        msu.ProductCode = field.Data.ToString().Replace("KB", "");
-                                        break;
-
-                                    case "VERSION": // id 25
-                                        msu.ProductVersion = (field.Data != null) ? field.Data.ToString() : "";
-                                        break;
-
-                                    case "DISPLAYNAME": // id 27
-                                        msu.ProductName = (field.Data != null) ? field.Data.ToString() : "";
-                                        break;
-                                    case "PACKAGETYPE": // id 1
-                                        msu.Type = Package.PackageType.MSU;
-                                        break;
-                                    default:
-                                        break;
-                                }
-                            }
-
-                            bundle.Packages.Add(msu);
-                        }
-                    }
-                }
+                // We should not be uninstalling MSU because they are usually perm and windows comp.
             }
             catch (Exception ex)
             {
@@ -1027,7 +1023,7 @@ namespace Microsoft.VS.ConfigurationManager
                     {
                         var wixbundle = pdb.Output.Tables[WIXBUNDLE];  //Id: 32 in pdb.Output.Rows
                         var chainmsipackageTable = pdb.Output.Tables[CHAINMSIPACKAGE]; //Id: 0 in pdb.Output.Rows
-                        var ChainPackageInfoTable = pdb.Output.Tables[CHAINPACKAGEINFO]; //Id: 0 in pdb.Output.Rows
+                        var uxPackageBehavior = pdb.Output.Tables[UXPACKAGEBEHAVIOR]; //Id: 0 in pdb.Output.Rows
 
                         if (wixbundle != null)
                         {
@@ -1036,7 +1032,7 @@ namespace Microsoft.VS.ConfigurationManager
                             bundlerow = null;
                             if (chainmsipackageTable != null)
                             {
-                                GetMSIDataFromTable(bundle, chainmsipackageTable, ChainPackageInfoTable);
+                                GetMSIDataFromTable(bundle, chainmsipackageTable, uxPackageBehavior);
                             }
                             bundle.Selected = rel.Selected;
                             Logger.Log(String.Format(CultureInfo.InvariantCulture, "Successfully loaded: {0} [{1}]", rel.Name, FILETYPE_WIXPDB));
