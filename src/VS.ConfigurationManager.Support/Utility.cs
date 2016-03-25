@@ -76,7 +76,7 @@ namespace Microsoft.VS.ConfigurationManager.Support
         {
             Logger.Log(String.Format(CultureInfo.InvariantCulture,"Creating process for {0} with arguments: {1}", file, args), Logger.MessageLevel.Information, AppName);
             var p = new Process();
-            int exitcode;
+            int exitcode = 1603;
             try
             {
                 p.StartInfo.UseShellExecute = false;

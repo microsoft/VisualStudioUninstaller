@@ -95,8 +95,8 @@ namespace Microsoft.VS.ConfigurationManager
         {
             this.BundlesAndPackagesStore = new BundlesAndPackagesStore();
             this.BundlesAndPackagesStore.Releases = new List<Bundle>();
-            this.BundlesAndPackagesStore.UpgradeCodeToPackageDictionary = new Dictionary<string, Package>();
-            this.BundlesAndPackagesStore.NoUpgradeCodePackages = new List<Package>();
+            this.BundlesAndPackagesStore.UpgradeCodeHash = new HashSet<string>();
+            this.BundlesAndPackagesStore.NoUpgradeCodeProductCodeHash = new HashSet<string>();
             this.BundlesAndPackagesStore.Bundles = new List<Bundle>();
         }
 
@@ -152,47 +152,91 @@ namespace Microsoft.VS.ConfigurationManager
         /// GetInstalledItems lists all items that are installed on this machine.
         /// </summary>
         /// <returns></returns>
-        public ICollection<Package> GetAllInstalledItems
+        public ICollection<Package> GetAllInstalledItems()
         {
-            get
-            {
-                Logger.Log(String.Format(CultureInfo.InvariantCulture, "Getting all installed items", AppName), Logger.MessageLevel.Information, AppName);
-                ICollection<Package> installations = new List<Package>();
+            Logger.Log(String.Format(CultureInfo.InvariantCulture, "Getting all installed items", AppName), Logger.MessageLevel.Information, AppName);
+            ICollection<Package> installations = new List<Package>();
 
+            try
+            {
+                Logger.Log(String.Format(CultureInfo.InvariantCulture, "Do we already have an object in memory?", AppName), Logger.MessageLevel.Verbose, AppName);
+                if (installedmsis.FirstOrDefault() == null)
+                {
+                    var hi = ProductInstallation.GetProducts(null, null, UserContexts.All);
+                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "No installpackages object found - creating", AppName), Logger.MessageLevel.Verbose, AppName);
+                    installations = ProductInstallation.GetProducts(null, null, UserContexts.All)
+                               .Where(ins => ins.ProductName != null)
+                               .Select(ins => new Package(
+                                                      this.GetUpgradeCode(ins.LocalPackage),
+                                                      ins.ProductCode,
+                                                      ins.ProductVersion.ToString(),
+                                                      ApplyFilter(ins.ProductName),
+                                                      null,
+                                                      (DateTime)ins.InstallDate,
+                                                      ins.InstallLocation,
+                                                      ins.UrlInfoAbout
+                                                    )
+                                                    )
+                               .OrderBy(ins => ins.ProductName).ToList();
+                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "Packages installed: {0}", installations.Count().ToString(CultureInfo.InvariantCulture)));
+                }
+                else
+                {
+                    Logger.Log("installedpackages is populated.");
+                    installations = (List<Package>)installedmsis;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Log(ex.Message, Logger.MessageLevel.Error, AppName);
+            }
+            installedmsis = installations;
+            return installations;
+        }
+
+        private string GetUpgradeCode(string installSource)
+        {
+            if (File.Exists(installSource))
+            {
                 try
                 {
-                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "Do we already have an object in memory?", AppName), Logger.MessageLevel.Verbose, AppName);
-                    if (installedmsis.FirstOrDefault() == null)
+                    using (var database = new Database(installSource, DatabaseOpenMode.ReadOnly))
                     {
-                        Logger.Log(String.Format(CultureInfo.InvariantCulture, "No installpackages object found - creating", AppName), Logger.MessageLevel.Verbose, AppName);
-                        installations = ProductInstallation.GetProducts(null, null, UserContexts.All)
-                                   .Where(ins => ins.ProductName != null)
-                                   .Select(ins => new Package(ins.ProductCode,
-                                                          ins.ProductVersion.ToString(),
-                                                          ApplyFilter(ins.ProductName),
-                                                          null,
-                                                          (DateTime)ins.InstallDate,
-                                                          ins.InstallLocation,
-                                                          ins.UrlInfoAbout
-                                                        )
-                                                        )
-                                   .OrderBy(ins => ins.ProductName).ToList();
-                        Logger.Log(String.Format(CultureInfo.InvariantCulture, "Packages installed: {0}", installations.Count().ToString(CultureInfo.InvariantCulture)));
-                    }
-                    else
-                    {
-                        Logger.Log("installedpackages is populated.");
-                        installations = (List<Package>)installedmsis;
+                        using (var view = database.OpenView(database.Tables["Property"].SqlSelectString))
+                        {
+                            view.Execute();
+                            foreach (var rec in view)
+                            {
+                                if ("UpgradeCode".Equals(rec.GetString("Property"), StringComparison.OrdinalIgnoreCase))
+                                {
+                                    return rec.GetString("Value");
+                                }
+                            }
+                        }
                     }
                 }
-                catch (Exception ex)
+                catch(Exception e)
                 {
-                    Logger.Log(ex.Message, Logger.MessageLevel.Error, AppName);
+                    Logger.Log(e);
                 }
-                installedmsis = installations;
-                return installations;
             }
+            else
+            {
+                Logger.Log(string.Format("The {0} doesn't exist, cannot find upgrade code.", installSource));
+            }
+
+            return string.Empty;
         }
+
+        //private string GetPackageUpgradeCode(string packagePath)
+        //{
+        //    string upgradeCode = string.Empty;
+        //    using (InstallPackage package = new InstallPackage(packagePath, DatabaseOpenMode.ReadOnly))
+        //    {
+        //        upgradeCode = package.Property["UpgradeCode"];
+        //    }
+        //    return upgradeCode;
+        //}
 
         /// <summary>
         ///      <para>
@@ -216,7 +260,7 @@ namespace Microsoft.VS.ConfigurationManager
                 try
                 {
                     Logger.Log("GetAllInstalledItemsCompareWixPdb start");
-                    installations = this.GetAllInstalledItems;
+                    installations = this.GetAllInstalledItems();
                     var installableitems = BundlesAndPackagesStore.Releases.Where(rel => rel.Selected).ToList();
                     Logger.Log(String.Format(CultureInfo.InvariantCulture, "Total releases: {0}", BundlesAndPackagesStore.Releases.Count().ToString(CultureInfo.InvariantCulture)), Logger.MessageLevel.Information, AppName);
                     Logger.Log(String.Format(CultureInfo.InvariantCulture, "Selected releases: {0}", BundlesAndPackagesStore.Releases.Count(rel => rel.Selected == true).ToString(CultureInfo.InvariantCulture)), Logger.MessageLevel.Information, AppName);
@@ -466,6 +510,23 @@ namespace Microsoft.VS.ConfigurationManager
 
             return exitcode;
         }
+        
+        /// <summary>
+        /// Report what Visual Studio's were installed on this system.
+        /// </summary>
+        public void InstalledVisualStudioReport()
+        {
+            List<Bundle> installedBundles = new List<Bundle>(this.BundlesAndPackagesStore.Bundles.Where(b => b.Installed));
+            var installedBundleStrings = installedBundles.Select<Bundle, string>(b =>
+                String.Format("(Name: {0}, Version: {1}, BundleId: {2})", b.Name, b.Version, b.BundleId)).ToArray();
+
+            Logger.LogWithOutput(string.Format(@"The following bundles were detected on your system: "), Logger.MessageLevel.Information, AppName);
+
+            foreach (var ib in installedBundleStrings)
+            {
+                Logger.LogWithOutput(string.Format(ib), Logger.MessageLevel.Information, AppName);
+            }
+        }
 
         /// <summary>
         /// Uninstall Visual Studio 2013/2015/vNext
@@ -473,8 +534,74 @@ namespace Microsoft.VS.ConfigurationManager
         public int Uninstall()
         {
             List<Bundle> installedBundles = new List<Bundle>(this.BundlesAndPackagesStore.Bundles.Where(b => b.Installed));
-            var installedBundleStrings = installedBundles.Select<Bundle, string>(b => b.Name).ToArray();
-            Console.WriteLine(string.Format(@"The following bundles were detected on your system: {0}", string.Join(";", installedBundleStrings)));
+
+            foreach (var ib in installedBundles)
+            {
+                int exitCode = 0;
+                if (!this.DoNotExecuteProcess)
+                {
+                    try
+                    {
+                        exitCode = ib.Uninstall();
+                    }
+                    catch(Exception ex)
+                    {
+                        Logger.LogWithOutput(
+                            string.Format("Bundle: {0} uninstalled failed with exception: {1}. ", ib.Name, ex.Message));
+                    }
+                }
+                Logger.LogWithOutput(string.Format("Bundle: {0} has been uninstalled with exit code: {1}. ", ib.Name, exitCode));
+
+                if (exitCode == 3010)
+                {
+                    return exitCode;
+                }
+            }
+
+            Logger.LogWithOutput("Normal Visual Studio Uninstall completed.");
+            Logger.LogWithOutput("Searching for stale MSIs and clean up stale MSIs.");
+
+            var installedPackages = this.GetAllInstalledItems();
+            List<Package> packagesToBeUninstalled = new List<Package>();
+
+            foreach(var ip in installedPackages)
+            {
+                if (this.BundlesAndPackagesStore.UpgradeCodeHash.Contains(ip.UpgradeCode))
+                {
+                    packagesToBeUninstalled.Add(ip);
+                }
+                else if (this.BundlesAndPackagesStore.NoUpgradeCodeProductCodeHash.Contains(ip.ProductCode))
+                {
+                    packagesToBeUninstalled.Add(ip);
+                }
+            }
+
+            if (packagesToBeUninstalled.Count > 0)
+            {
+                Logger.LogWithOutput(string.Format("{0} stale MSIs found.  Uninstalling them.", packagesToBeUninstalled.Count ));
+
+                int count = packagesToBeUninstalled.Count;
+                foreach (var p in packagesToBeUninstalled)
+                {
+                    int rc = 0;
+
+                    if (!this.DoNotExecuteProcess)
+                    {
+                        try
+                        {
+                            rc = p.Uninstall();
+                        }
+                        catch(Exception ex)
+                        {
+                            Logger.LogWithOutput(
+                                 string.Format("Msi: {0} uninstalled failed with exception: {1}. ", p.ProductName, ex.Message));
+                        }
+                    }
+                    count--;
+                    Logger.LogWithOutput(string.Format("Uninstalled {0} with exit code: {1}. {2}/{3}", p.ProductName, rc, count, packagesToBeUninstalled.Count));
+                }
+            }
+
             return 0;
         }
 
@@ -653,8 +780,8 @@ namespace Microsoft.VS.ConfigurationManager
             {
                 if (disposing) {
                     BundlesAndPackagesStore.Releases = null;
-                    BundlesAndPackagesStore.UpgradeCodeToPackageDictionary = null;
-                    BundlesAndPackagesStore.NoUpgradeCodePackages = null;
+                    BundlesAndPackagesStore.UpgradeCodeHash = null;
+                    BundlesAndPackagesStore.NoUpgradeCodeProductCodeHash = null;
                     BundlesAndPackagesStore.Bundles = null;
                     ut.Dispose();
                 }
@@ -696,8 +823,8 @@ namespace Microsoft.VS.ConfigurationManager
         #endregion Private Fields
 
         #region Private Methods
-        private void GetUniquePackages(Dictionary<string, Package> upgradeCodeToPackageDictionary, 
-            List<Package> noUpgradeCodePackage,
+        private void GetUniquePackages(HashSet<string> upgradeCodeHash, 
+            HashSet<string> noUpgradeCodeProductCodeHash,
             Wix.Table chainmsipackageTable, 
             Wix.Table uxPackageBehavior)
         {
@@ -780,13 +907,13 @@ namespace Microsoft.VS.ConfigurationManager
 
                     if (string.IsNullOrEmpty(msi.UpgradeCode))
                     {
-                        noUpgradeCodePackage.Add(msi);
+                        noUpgradeCodeProductCodeHash.Add(msi.ProductCode);
                     }
                     else
                     {
-                        if (!upgradeCodeToPackageDictionary.ContainsKey(msi.UpgradeCode))
+                        if (!upgradeCodeHash.Contains(msi.UpgradeCode))
                         {
-                            upgradeCodeToPackageDictionary.Add(msi.UpgradeCode, msi);
+                            upgradeCodeHash.Add(msi.UpgradeCode);
                         }
                     }
                 }
@@ -986,7 +1113,11 @@ namespace Microsoft.VS.ConfigurationManager
                     {
                         if (chainmsipackageTable != null)
                         {
-                            this.GetUniquePackages(this.BundlesAndPackagesStore.UpgradeCodeToPackageDictionary, this.BundlesAndPackagesStore.NoUpgradeCodePackages, chainmsipackageTable, uxPackageBehavior);
+                            this.GetUniquePackages(
+                                this.BundlesAndPackagesStore.UpgradeCodeHash, 
+                                this.BundlesAndPackagesStore.NoUpgradeCodeProductCodeHash, 
+                                chainmsipackageTable, 
+                                uxPackageBehavior);
                         }
                     }
                 }

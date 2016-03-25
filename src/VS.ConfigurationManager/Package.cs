@@ -94,6 +94,31 @@ namespace Microsoft.VS.ConfigurationManager
         /// <summary>
         /// Passing in all fields on creation of an instance
         /// </summary>
+        /// <param name="upgradecode"></param>
+        /// <param name="productcode"></param>
+        /// <param name="productversion"></param>
+        /// <param name="productname"></param>
+        /// <param name="chainingpackage"></param>
+        /// <param name="installDate"></param>
+        /// <param name="installLocation"></param>
+        /// <param name="url"></param>
+        public Package(string upgradecode, string productcode, string productversion, string productname, string chainingpackage, DateTime installDate, string installLocation, System.Uri url)
+        {
+            Initialize();
+            Type = PackageType.MSI;
+            UpgradeCode = upgradecode;
+            ProductCode = productcode;
+            ProductVersion = productversion;
+            ProductName = productname;
+            ChainingPackage = chainingpackage;
+            InstallDate = installDate;
+            InstallLocation = installLocation;
+            Url = url;
+        }
+
+        /// <summary>
+        /// Passing in all fields on creation of an instance
+        /// </summary>
         /// <param name="productcode"></param>
         /// <param name="productversion"></param>
         /// <param name="productname"></param>
@@ -185,7 +210,7 @@ namespace Microsoft.VS.ConfigurationManager
             {
                 case PackageType.MSI:
                     Logger.Log(String.Format(CultureInfo.InvariantCulture, "Installer: {0}", this.ProductName), Logger.MessageLevel.Information, AppName);
-                    var msilogfilename = System.IO.Path.ChangeExtension(LogLocation + "_" + this.ProductName.Replace("", "").ToString(), "log");
+                    var msilogfilename = System.IO.Path.ChangeExtension(LogLocation + "_" + this.ProductName.Replace(" ", string.Empty).ToString(), "log");
                     // Run msiexec from the system path only.
                     file = System.IO.Path.Combine(systemdir, msiEXEname);
                     // Quiet uninstall with no restart requested and logging enabled

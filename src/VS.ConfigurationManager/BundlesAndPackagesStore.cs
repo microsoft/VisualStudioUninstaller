@@ -13,14 +13,14 @@ namespace Microsoft.VS.ConfigurationManager
     public class BundlesAndPackagesStore
     {
         /// <summary>
-        /// Dictionary of UpgradeCode to Package mappings.
+        /// HashSet of UpgradeCode; we should use UpgradeCode to do package search.
         /// </summary>
-        public Dictionary<string, Package> UpgradeCodeToPackageDictionary { get; set; }
+        public HashSet<string> UpgradeCodeHash { get; set; }
 
         /// <summary>
-        /// A list of packages without upgrade code.
+        /// HashSet of ProductCode; we should use ProductCode to do package search if there's no UpgradeCode is set.
         /// </summary>
-        public List<Package> NoUpgradeCodePackages { get; set; }
+        public HashSet<string> NoUpgradeCodeProductCodeHash { get; set; }
 
         /// <summary>
         /// A list of bundles.
