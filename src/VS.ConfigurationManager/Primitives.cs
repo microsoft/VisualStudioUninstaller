@@ -26,21 +26,8 @@ namespace Microsoft.VS.ConfigurationManager
         /// Current machine architecture
         /// </summary>
         public ArchitectureConfiguration MachineArchitectureConfiguration { get; set; }
-        /// <summary>
-        /// List of installed MSIs on this machine when (Processed)
-        /// </summary>
-        public ICollection<Package> InstalledPackages
-        {
-            get { return InstalledPackages; }
-        }
 
-        /// <summary>
-        /// List of releases supported by this application when (Processed)
-        /// </summary>
-        public ICollection<Bundle> Releases
-        {
-            get { return releases; }
-        }
+        public BundlesAndPackagesStore BundlesAndPackagesStore { get; set; }
 
         /// <summary>
         /// Flag for ensuring data is loaded successfully.
@@ -102,6 +89,18 @@ namespace Microsoft.VS.ConfigurationManager
         #region Public Methods
 
         /// <summary>
+        /// Constructor.
+        /// </summary>
+        public Primitives()
+        {
+            this.BundlesAndPackagesStore = new BundlesAndPackagesStore();
+            this.BundlesAndPackagesStore.Releases = new List<Bundle>();
+            this.BundlesAndPackagesStore.UpgradeCodeToPackageDictionary = new Dictionary<string, Package>();
+            this.BundlesAndPackagesStore.NoUpgradeCodePackages = new List<Package>();
+            this.BundlesAndPackagesStore.Bundles = new List<Bundle>();
+        }
+
+        /// <summary>
         ///      Using the List of Filter classes, do a replace of strings per the user's
         ///      specification.
         /// </summary>
@@ -139,11 +138,11 @@ namespace Microsoft.VS.ConfigurationManager
             {
                 // 0-based array
                 var pos = Convert.ToInt32(id, CultureInfo.InvariantCulture) - 1;
-                Logger.Log(String.Format(CultureInfo.InvariantCulture, "Installed: {0} ({1})", Releases.ElementAt(pos).Name, Releases.ElementAt(pos).Installed.ToString()));
-                Logger.Log(String.Format(CultureInfo.InvariantCulture, "Selected set to true: {0}", Releases.ElementAt(pos).Name));
-                if (pos <= this.Releases.Count())
+                Logger.Log(String.Format(CultureInfo.InvariantCulture, "Installed: {0} ({1})", BundlesAndPackagesStore.Releases.ElementAt(pos).Name, BundlesAndPackagesStore.Releases.ElementAt(pos).Installed.ToString()));
+                Logger.Log(String.Format(CultureInfo.InvariantCulture, "Selected set to true: {0}", BundlesAndPackagesStore.Releases.ElementAt(pos).Name));
+                if (pos <= this.BundlesAndPackagesStore.Releases.Count())
                 {
-                    this.Releases.ElementAtOrDefault(pos).Selected = true;
+                    this.BundlesAndPackagesStore.Releases.ElementAtOrDefault(pos).Selected = true;
                 }
             }
         }
@@ -218,12 +217,12 @@ namespace Microsoft.VS.ConfigurationManager
                 {
                     Logger.Log("GetAllInstalledItemsCompareWixPdb start");
                     installations = this.GetAllInstalledItems;
-                    var installableitems = releases.Where(rel => rel.Selected).ToList();
-                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "Total releases: {0}", releases.Count().ToString(CultureInfo.InvariantCulture)), Logger.MessageLevel.Information, AppName);
-                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "Selected releases: {0}", releases.Count(rel => rel.Selected == true).ToString(CultureInfo.InvariantCulture)), Logger.MessageLevel.Information, AppName);
+                    var installableitems = BundlesAndPackagesStore.Releases.Where(rel => rel.Selected).ToList();
+                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "Total releases: {0}", BundlesAndPackagesStore.Releases.Count().ToString(CultureInfo.InvariantCulture)), Logger.MessageLevel.Information, AppName);
+                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "Selected releases: {0}", BundlesAndPackagesStore.Releases.Count(rel => rel.Selected == true).ToString(CultureInfo.InvariantCulture)), Logger.MessageLevel.Information, AppName);
                     foreach (Bundle bundle in installableitems)
                     {
-                        var  msis = bundle.Packages;
+                        var msis = bundle.Packages;
                         Logger.Log(String.Format(CultureInfo.InvariantCulture, "Populating bundle: {0}", bundle.Name), Logger.MessageLevel.Verbose, AppName);
                         var query = from ins in installations
                                     join installable in msis on ins.ProductCode equals installable.ProductCode
@@ -264,46 +263,6 @@ namespace Microsoft.VS.ConfigurationManager
         }
 
         /// <summary>
-        /// Pull information from WixPdbs unless processing has already happened.  getall overrides this behavior.
-        /// </summary>
-        /// <param name="getall"></param>
-        /// <returns></returns>
-        public ICollection<Bundle> GetDataFromPdb(bool getall = true)
-        {
-            var bun = GetDataFromPdb(releases, getall);
-            return bun;
-        }
-
-        /// <summary> <para>This function returns a list of installable items based on a
-        /// pre-selected list of releases passed in.</para> <para>It can take an array of releases
-        /// or a single release. Pass in no value for release and it will return for all configured
-        /// releases.</para> <para>string rel - Single release passed results in limiting the list
-        /// to that release</para> </summary> <param name="rel"></param>
-        public ICollection<Bundle> GetDataFromPdb(string rel)
-        {
-            var rels = new List<Bundle>();
-            rels = releases.Where(x => x.ReleasePdb == rel).ToList();
-            var bun = GetDataFromPdb(rels, false);
-            return bun;
-        }
-
-        /// <summary> <para>This function returns a list of installable items based on a
-        /// pre-selected list of releases passed in.</para> <para>It can take an array of releases
-        /// or a single release. Pass in no value for release and it will return for all configured
-        /// releases.</para> <para>string[] rel - Passing multiple items will iterate through all
-        /// matched WixPdbs</para> </summary> <param name="rel"></param>
-        public ICollection<Bundle> GetDataFromPdb(string[] rel)
-        {
-            var rels = new List<Bundle>();
-            foreach (string releasename in rel)
-            {
-                rels.Add(releases.FirstOrDefault(x => x.ReleasePdb == releasename && x.FileType == FILETYPE_WIXPDB));
-            }
-            var bun = GetDataFromPdb(rels, false);
-            return bun;
-        }
-
-        /// <summary>
         ///      Produces a string that lists all the releases that are being parsed from the
         ///      WixPdb.
         /// </summary>
@@ -317,7 +276,7 @@ namespace Microsoft.VS.ConfigurationManager
                 var sb = new StringBuilder();
                 var i = 1;
 
-                foreach (Bundle rel in releases)
+                foreach (Bundle rel in BundlesAndPackagesStore.Releases)
                 {
                     Logger.Log(String.Format(CultureInfo.InvariantCulture, "Adding bundle: {0}", rel.Name), Logger.MessageLevel.Verbose, AppName);
                     var installvalue = new StringBuilder();
@@ -352,8 +311,8 @@ namespace Microsoft.VS.ConfigurationManager
             {
                 // Get all files that are in the content directory. Record them as a Bundle for
                 // later usage. Additionally, check the install state of each Bundle.
-                releases = new List<Bundle>();
-                GetContent(ref releases, DataFilesPath);
+                BundlesAndPackagesStore.Releases = new List<Bundle>();
+                GetContent(DataFilesPath);
                 ReleaseOutput = String.IsNullOrEmpty(releaseoutput) ? GetReleases : releaseoutput;
                 Logger.Log(String.Format(CultureInfo.InvariantCulture, "Initialize called successfully."), Logger.MessageLevel.Information, AppName);
                 Processed = false;
@@ -362,6 +321,29 @@ namespace Microsoft.VS.ConfigurationManager
             {
                 Logger.Log(ex.Message, Logger.MessageLevel.Error, AppName);
             }
+        }
+
+        /// <summary>
+        /// Load from a data file.
+        /// </summary>
+        /// <param name="path"></param>
+        public void LoadFromDataFile(string path)
+        {
+            // Generate file name based on configuration and name of the wixpdb
+            long position = 0;
+            // create a new formatter instance
+            var formatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
+
+            using (FileStream stream = new FileStream(path, FileMode.Open, FileAccess.Read))
+            {
+                if (position < stream.Length)
+                {
+                    stream.Seek(position, SeekOrigin.Begin);
+                    this.BundlesAndPackagesStore = (BundlesAndPackagesStore)formatter.Deserialize(stream);
+                    position = stream.Position;
+                }
+            }
+            formatter = null;
         }
 
         /// <summary>
@@ -420,7 +402,37 @@ namespace Microsoft.VS.ConfigurationManager
         /// </summary>
         public void SaveAll()
         {
-            Save(Releases);
+            Save(BundlesAndPackagesStore.Releases);
+        }
+
+        /// <summary>
+        /// Save BundlesAndPackageStore object to a data file.
+        /// </summary>
+        public void SaveToDataFile()
+        {
+            // create a new formatter instance
+            var formatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
+
+            string tempDirectory = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+            Directory.CreateDirectory(tempDirectory);
+
+            string fileName = Path.Combine(tempDirectory, "DataFile.bin");
+
+            Console.WriteLine(@"Writing data file to " + fileName);
+
+            try
+            {
+                // open a filestream
+                using (FileStream stream = new FileStream(fileName, FileMode.Create, FileAccess.Write))
+                {
+                    formatter.Serialize(stream, this.BundlesAndPackagesStore);
+                }
+            }catch(Exception e)
+            {
+                Console.WriteLine(@"Failed to write data file to " + fileName + " reason: " + e.Message);
+            }
+
+            Console.WriteLine(string.Format("Writing data file to {0}, completed. ", fileName));
         }
 
         /// <summary>
@@ -456,6 +468,17 @@ namespace Microsoft.VS.ConfigurationManager
         }
 
         /// <summary>
+        /// Uninstall Visual Studio 2013/2015/vNext
+        /// </summary>
+        public int Uninstall()
+        {
+            List<Bundle> installedBundles = new List<Bundle>(this.BundlesAndPackagesStore.Bundles.Where(b => b.Installed));
+            var installedBundleStrings = installedBundles.Select<Bundle, string>(b => b.Name).ToArray();
+            Console.WriteLine(string.Format(@"The following bundles were detected on your system: {0}", string.Join(";", installedBundleStrings)));
+            return 0;
+        }
+
+        /// <summary>
         /// Uninstall a specific WiX bundle
         /// </summary>
         /// <param name="bundle"></param>
@@ -467,7 +490,7 @@ namespace Microsoft.VS.ConfigurationManager
             var uninstallactionerrorcode = -1;
             if (!Processed) { GetDataFromPdb(); }
 
-            if (Releases.Where(x=>x.Selected) != null)
+            if (BundlesAndPackagesStore.Releases.Where(x=>x.Selected) != null)
             {
                 try
                 {
@@ -516,7 +539,7 @@ namespace Microsoft.VS.ConfigurationManager
         public int Uninstall(ICollection<Bundle> bundles)
         {
             var exitcode = -1;
-            if (Releases.Where(x => x.Selected) != null)
+            if (BundlesAndPackagesStore.Releases.Where(x => x.Selected) != null)
             {
                 try
                 {
@@ -629,7 +652,10 @@ namespace Microsoft.VS.ConfigurationManager
             if (!disposed)
             {
                 if (disposing) {
-                    releases = null;
+                    BundlesAndPackagesStore.Releases = null;
+                    BundlesAndPackagesStore.UpgradeCodeToPackageDictionary = null;
+                    BundlesAndPackagesStore.NoUpgradeCodePackages = null;
+                    BundlesAndPackagesStore.Bundles = null;
                     ut.Dispose();
                 }
             }
@@ -663,8 +689,6 @@ namespace Microsoft.VS.ConfigurationManager
 
         private ICollection<Package> installedmsis = new List<Package>();
 
-        private ICollection<Bundle> releases = new List<Bundle>();
-
         private string releaseoutput = string.Empty;
 
         private Utility ut = new Utility();
@@ -672,9 +696,13 @@ namespace Microsoft.VS.ConfigurationManager
         #endregion Private Fields
 
         #region Private Methods
-        private static ICollection<Package> GetMSIDataFromTable(Bundle bundle, Wix.Table chainmsipackageTable, Wix.Table uxPackageBehavior)
+        private void GetUniquePackages(Dictionary<string, Package> upgradeCodeToPackageDictionary, 
+            List<Package> noUpgradeCodePackage,
+            Wix.Table chainmsipackageTable, 
+            Wix.Table uxPackageBehavior)
         {
-            try {
+            try
+            {
                 Dictionary<string, string> uxPackageBehaviorDict = new Dictionary<string, string>();
                 if (uxPackageBehavior != null)
                 {
@@ -689,8 +717,11 @@ namespace Microsoft.VS.ConfigurationManager
                                 case "PackageId":
                                     packageId = field.Data.ToString();
                                     break;
-                                case "ReallyPermanent":
-                                    reallyPerm = field.Data.ToString();
+                                case "ReallyPermanent": // nullable.
+                                    if (field.Data != null)
+                                    {
+                                        reallyPerm = field.Data.ToString();
+                                    }
                                     break;
 
                             }
@@ -718,6 +749,116 @@ namespace Microsoft.VS.ConfigurationManager
                                 msi.ProductCode = field.Data.ToString();
                                 break;
 
+                            case "UPGRADECODE": // nullable.
+                                if (field.Data != null)
+                                {
+                                    msi.UpgradeCode = field.Data.ToString();
+                                }
+                                break;
+                            case "PRODUCTVERSION":
+                                msi.ProductVersion = field.Data.ToString();
+                                break;
+
+                            case "PRODUCTNAME":
+                                msi.ProductName = field.Data.ToString();
+                                break;
+                            case "PACKAGETYPE":
+                                msi.Type = Package.PackageType.MSI;
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+
+                    // if the package is really perm, then, don't uninstall it.
+                    if (!string.IsNullOrEmpty(msi.ChainingPackage)
+                        && uxPackageBehaviorDict.ContainsKey(msi.ChainingPackage)
+                        && uxPackageBehaviorDict[msi.ChainingPackage].Equals("yes", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    if (string.IsNullOrEmpty(msi.UpgradeCode))
+                    {
+                        noUpgradeCodePackage.Add(msi);
+                    }
+                    else
+                    {
+                        if (!upgradeCodeToPackageDictionary.ContainsKey(msi.UpgradeCode))
+                        {
+                            upgradeCodeToPackageDictionary.Add(msi.UpgradeCode, msi);
+                        }
+                    }
+                }
+                // We should not be uninstalling MSU because they are usually perm and they are windows comp.
+            }
+            catch (Exception ex)
+            {
+                Logger.Log(ex);
+            }
+        }
+        /// <summary>
+        /// DELETE
+        /// </summary>
+        /// <param name="bundle"></param>
+        /// <param name="chainmsipackageTable"></param>
+        /// <param name="uxPackageBehavior"></param>
+        /// <returns></returns>
+        private static ICollection<Package> GetMSIDataFromTable(Bundle bundle, Wix.Table chainmsipackageTable, Wix.Table uxPackageBehavior)
+        {
+            try {
+                Dictionary<string, string> uxPackageBehaviorDict = new Dictionary<string, string>();
+                if (uxPackageBehavior != null)
+                {
+                    foreach (Wix.Row msirow in uxPackageBehavior.Rows)
+                    {
+                        string packageId = string.Empty;
+                        string reallyPerm = string.Empty;
+                        foreach (Wix.Field field in msirow.Fields)
+                        {
+                            switch (field.Column.Name.ToString(CultureInfo.InvariantCulture).ToUpperInvariant())
+                            {
+                                case "PackageId":
+                                    packageId = field.Data.ToString();
+                                    break;
+                                case "ReallyPermanent": // nullable.
+                                    if (field.Data != null)
+                                    {
+                                        reallyPerm = field.Data.ToString();
+                                    }
+                                    break;
+
+                            }
+                        }
+                        if (!string.IsNullOrEmpty(packageId) && !uxPackageBehaviorDict.ContainsKey(packageId))
+                        {
+                            uxPackageBehaviorDict.Add(packageId, reallyPerm);
+                        }
+                    }
+                }
+
+                foreach (Wix.Row msirow in chainmsipackageTable.Rows)
+                {
+                    var msi = new Package();
+
+                    foreach (Wix.Field field in msirow.Fields)
+                    {
+                        switch (field.Column.Name.ToString(CultureInfo.InvariantCulture).ToUpperInvariant())
+                        {
+                            case "CHAINPACKAGE_":
+                                msi.ChainingPackage = field.Data.ToString();
+                                break;
+
+                            case "PRODUCTCODE": // id 23
+                                msi.ProductCode = field.Data.ToString();
+                                break;
+
+                            case "UPGRADECODE": // nullable.
+                                if (field.Data != null)
+                                {
+                                    msi.UpgradeCode = field.Data.ToString();
+                                }
+                                break;
                             case "PRODUCTVERSION":
                                 msi.ProductVersion = field.Data.ToString();
                                 break;
@@ -742,7 +883,7 @@ namespace Microsoft.VS.ConfigurationManager
                     }
                     bundle.Packages.Add(msi);
                 }
-                // We should not be uninstalling MSU because they are usually perm and windows comp.
+                // We should not be uninstalling MSU because they are usually perm and they are windows comp.
             }
             catch (Exception ex)
             {
@@ -781,7 +922,7 @@ namespace Microsoft.VS.ConfigurationManager
             try
             {
                 Logger.Log(String.Format(CultureInfo.InvariantCulture, "Loading files from: {0}", directory), Logger.MessageLevel.Information, AppName);
-                Releases.Clear();
+                BundlesAndPackagesStore.Releases.Clear();
 
                 if (!di.Exists)
                 {
@@ -796,7 +937,7 @@ namespace Microsoft.VS.ConfigurationManager
                     var allfiles = System.IO.Directory.GetFiles(directory);
                     var files = Array.FindAll(allfiles, s => s.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
 
-                    foreach (var file in files) { Releases.Add(FileToBundle(file)); }
+                    foreach (var file in files) { BundlesAndPackagesStore.Releases.Add(FileToBundle(file)); }
                 }
             }
             catch (DirectoryNotFoundException dex)
@@ -818,7 +959,50 @@ namespace Microsoft.VS.ConfigurationManager
             return outObj;
         }
 
-        private void GetContent(ref ICollection<Bundle> rels, string path)
+        /// <summary>
+        /// Load a wixpdb
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
+        public bool LoadFromWixpdb(string path)
+        {
+            try
+            {
+                // Get all files associated with WixPDBs in directory
+                Logger.Log(String.Format(CultureInfo.InvariantCulture, "Loading {0}", path), Logger.MessageLevel.Information, "Utility");
+                var pdb = Wix.Pdb.Load(Path.GetFullPath(path), true, true);
+                var bundlerowinfo = (Wix.WixBundleRow)GetBundlesFromWixPDB(pdb).Rows[0];
+
+                var bundle = new Bundle(bundlerowinfo.BundleId, bundlerowinfo.Name, bundlerowinfo.Version, Path.GetFileNameWithoutExtension(path), Path.GetFullPath(path), FILETYPE_WIXPDB, false);
+                this.BundlesAndPackagesStore.Bundles.Add(bundle);
+
+                if (pdb.Output.Type == Wix.OutputType.Bundle)
+                {
+                    var wixbundle = pdb.Output.Tables[WIXBUNDLE];  //Id: 32 in pdb.Output.Rows
+                    var chainmsipackageTable = pdb.Output.Tables[CHAINMSIPACKAGE]; //Id: 0 in pdb.Output.Rows
+                    var uxPackageBehavior = pdb.Output.Tables[UXPACKAGEBEHAVIOR]; //Id: 0 in pdb.Output.Rows
+
+                    if (wixbundle != null)
+                    {
+                        if (chainmsipackageTable != null)
+                        {
+                            this.GetUniquePackages(this.BundlesAndPackagesStore.UpgradeCodeToPackageDictionary, this.BundlesAndPackagesStore.NoUpgradeCodePackages, chainmsipackageTable, uxPackageBehavior);
+                        }
+                    }
+                }
+
+                bundlerowinfo = null;
+            }
+            catch (Exception e)
+            {
+                Logger.Log("Unable to load wixpdb: " + path, Logger.MessageLevel.Error);
+                Logger.Log(e);
+                return false;
+            }
+            return true;
+        }
+
+        private void GetContent(string path)
         {
             try
             {
@@ -828,18 +1012,18 @@ namespace Microsoft.VS.ConfigurationManager
                     {
                         ICollection<string> list = new List<string>(Directory.GetFiles(@"content"));
 
-                        rels = new List<Bundle>();
+                        BundlesAndPackagesStore.Releases = new List<Bundle>();
                         foreach (string entry in list)
                         {
                             try
                             {
                                 // Get all files associated with WixPDBs in directory
                                 Logger.Log(String.Format(CultureInfo.InvariantCulture, "Loading {0}", entry), Logger.MessageLevel.Information, "Utility");
-                                Wix.Pdb.Load(Path.GetFullPath(entry), true, true);
-                                var bundlerowinfo = (Wix.WixBundleRow)GetBundlesFromWixPDB(entry).Rows[0];
+                                var pdb = Wix.Pdb.Load(Path.GetFullPath(entry), true, true);
+                                var bundlerowinfo = (Wix.WixBundleRow)GetBundlesFromWixPDB(pdb).Rows[0];
 
                                 var newrel = new Bundle(bundlerowinfo.BundleId, bundlerowinfo.Name, bundlerowinfo.Version, Path.GetFileNameWithoutExtension(entry), Path.GetFullPath(entry), FILETYPE_WIXPDB, false);
-                                rels.Add(newrel);
+                                BundlesAndPackagesStore.Releases.Add(newrel);
 
                                 bundlerowinfo = null;
                             }
@@ -861,11 +1045,11 @@ namespace Microsoft.VS.ConfigurationManager
                         // Does a PDB exist for the file that we are reading?
                         var filenamewithoutextension = Path.GetFileNameWithoutExtension(fileitem);
 
-                        if (releases.Where(x => x.Name == filenamewithoutextension).Count() != 0)
+                        if (BundlesAndPackagesStore.Releases.Where(x => x.Name == filenamewithoutextension).Count() != 0)
                         {
                             // Update values to use the file instead
-                            releases.First(x => x.Name == filenamewithoutextension).FileType = FILETYPE_BIN;
-                            releases.First(x => x.Name == filenamewithoutextension).binPath = Path.Combine(path, fileitem);
+                            BundlesAndPackagesStore.Releases.First(x => x.Name == filenamewithoutextension).FileType = FILETYPE_BIN;
+                            BundlesAndPackagesStore.Releases.First(x => x.Name == filenamewithoutextension).binPath = Path.Combine(path, fileitem);
                         }
                         else // If there is no wixpdb does not exist, pull data from the file to populate releases
                         {
@@ -877,7 +1061,7 @@ namespace Microsoft.VS.ConfigurationManager
                                 {
                                     binPath = Path.Combine(path, fileitem)
                                 };
-                                rels.Add(rel);
+                                BundlesAndPackagesStore.Releases.Add(rel);
                                 tempbundle = null;
                                 rel = null;
                             }
@@ -900,11 +1084,9 @@ namespace Microsoft.VS.ConfigurationManager
             }
         }
 
-        private static Wix.Table GetBundlesFromWixPDB(string entry)
-        {
-            var pdb = Wix.Pdb.Load(Path.GetFullPath(entry), true, false);
+        private static Wix.Table GetBundlesFromWixPDB(Microsoft.Tools.WindowsInstallerXml.Pdb pdb)
+        { 
             var wixbundle = pdb.Output.Tables[WIXBUNDLE];  //Id: 32 in pdb.Output.Rows
-            pdb = null;
             return wixbundle;
         }
 
@@ -941,76 +1123,32 @@ namespace Microsoft.VS.ConfigurationManager
         /// <para>List of Release (class) rels - Metadata from Initialize procedure filtered
         /// by public calls.</para>
         /// </summary>
-        /// <param name="rels"></param>
-        /// <param name="getall"></param>
         /// <returns>List Bundle</returns>
-        private ICollection<Bundle> GetDataFromPdb(ICollection<Bundle> rels, bool getall)
+        public ICollection<Bundle> GetDataFromPdb()
         {
-            ICollection<Bundle> installables = new List<Bundle>();
             Logger.Log("GetDataFromPdb started.");
 
-            Logger.Log(String.Format(CultureInfo.InvariantCulture, " - Select releases: {0}", Releases.Count(x => x.Selected).ToString(CultureInfo.InvariantCulture)));
-            Logger.Log(String.Format(CultureInfo.InvariantCulture, " - Get all WixPdbs: {0}", getall.ToString(CultureInfo.InvariantCulture)));
-            if (Releases.Count(x => x.Selected) != 0 || getall)
-            {
-                try
+            Logger.Log(String.Format(CultureInfo.InvariantCulture, " - Select releases: {0}", BundlesAndPackagesStore.Releases.Count(x => x.Selected).ToString(CultureInfo.InvariantCulture)));
+
+            try
                 {
-                    Logger.Log(String.Format(CultureInfo.InvariantCulture, " -- Releases: {0}", rels == null ? "Null" : rels.Count().ToString(CultureInfo.InvariantCulture)));
-                    if (releases == null || releases.ElementAt(0).Packages == null || getall)
-                    {
-                        if ((rels == null) || (releases == null))
-                        {
-                            GetContent(ref releases, DataFilesPath);
-                        }
 
-                        if (getall)
-                        {
-                            rels = Releases;
-                        }
+                            GetContent(DataFilesPath);
 
-                        foreach (Bundle rel in rels)
-                        {
-                            var filetype = rel.FileType;
-                            var filepath = (filetype == FILETYPE_WIXPDB) ? rel.Path : rel.binPath;
-                            if (getall)
-                            {
-                                filetype = FILETYPE_WIXPDB;
-                                filepath = rel.Path;
-                            }
-                            if (File.Exists(filepath))
-                            {
-                                GetDataFromSource(installables, rel, filetype, filepath);
-                            }
-                            else
-                            {
-                                throw new FileNotFoundException(String.Format(CultureInfo.InvariantCulture, "Error File Not Found: {0}", rel.Path), rel.Path);
-                            }
-                        }
-                        Logger.Log(String.Format(CultureInfo.InvariantCulture, "Installables count: {0}", installables.Count().ToString(CultureInfo.InvariantCulture), AppName));
-                        releases = installables;
-                    }
-                    else
-                    {
-                        installables = releases;
-                    }
+
+                                GetDataFromSource(this.BundlesAndPackagesStore.Releases, null, "todo", "todo");
+    
                 }
                 catch (Exception ex)
                 {
                     Logger.Log(ex);
                 }
-            }
-            else
-            {
-                var msg = "A release has not been selected for use with this method.  Property UserSelectedReleases needs to be set.";
-                Logger.Log(msg);
-                throw new Exception(msg);
-            }
+
 
             Processed = true;
             Logger.Log("GetDataFromPdb ended.");
-            SaveAll();
-            installables = getall ? installables : installables.Where(x => x.Selected).ToList();
-            return installables;
+            
+            return this.BundlesAndPackagesStore.Releases;
         }
 
         private void GetDataFromSource(ICollection<Bundle> installables, Bundle rel, string filetype, string filepath)

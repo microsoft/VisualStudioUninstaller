@@ -51,6 +51,10 @@ namespace Microsoft.VS.ConfigurationManager
         /// </summary>
         public String ProductCode { get; set; }
         /// <summary>
+        /// WiX MSI upgrade code
+        /// </summary>
+        public String UpgradeCode { get; set; }
+        /// <summary>
         /// Wix MSI Product Name
         /// </summary>
         public string ProductName { get; set; }

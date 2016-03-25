@@ -144,7 +144,10 @@ namespace Microsoft.VS.ConfigurationManager
         /// <summary>Is the bundle installed?</summary>
         public bool Installed
         {
-            get { return _installed; }
+            get {
+                LocalInstallLocation = System.IO.Path.Combine(packagecache, '{' + BundleId.ToString() + '}');
+                return Directory.Exists(LocalInstallLocation) ? true : false;
+            }
         }
 
         /// <summary>Has the user selected this item for uninstall?</summary>

@@ -20,8 +20,13 @@ namespace Microsoft.VS.Uninstaller
 
         #region Private Methods
 
-        private static void Main(string[] args)
+        private static int Main(string[] args)
         {
+            string wixpdbsPathsFile = string.Empty;
+            string[] wixpdbsPaths = null;
+            string dataFilePath = string.Empty;
+            //args = new string[] { @"/wixpdbs:C:\Users\tobyhu\Desktop\test\paths.txt" };
+            args = new string[] { @"/binfile:C:\Users\tobyhu\Desktop\test\DataFile.bin" };
             if (args != null && args.Count() > 0)
             {
                 foreach (var arg in args)
@@ -38,12 +43,25 @@ namespace Microsoft.VS.Uninstaller
                         case "noprocess":
                             _donotprocess = true;
                             break;
+                        default:
+                            // Path to the file containing a list of paths to the wixpdbs.
+                            // e.g. /wixpdbs:c:\myPaths.txt
+                            if (arg.StartsWith("/wixpdbs:", StringComparison.OrdinalIgnoreCase))
+                            {
+                                wixpdbsPathsFile = arg.Substring("/wixpdbs:".Length);
+                                wixpdbsPaths = File.ReadAllLines(wixpdbsPathsFile);
+                            }
+                            // Path to the file containing the DataFile.bin; if no file is passed in, it will use the embedded one.
+                            // e.g. /binfile:C:\DataFile.bin
+                            else if (arg.StartsWith("/binfile:", StringComparison.OrdinalIgnoreCase))
+                            {
+                                dataFilePath = arg.Substring("/binfile:".Length);
+                            }
+                            break;
                     }
                 }
             }
 
-            ICollection<Bundle> Bundles = new List<Bundle>();
-            ICollection<string> Userselected = new List<string>();
             var ip = new Primitives();
 
             ConsoleOperations.PrimitiveObject = ip;
@@ -54,14 +72,12 @@ namespace Microsoft.VS.Uninstaller
 
             try
             {
-                // Change visual of console application to fit screen.
-                ConsoleOperations.SetConsoleAttributes();
-
                 // Check for permissions to run uninstall actions
                 var elev = new ElevationDetection();
                 if (!elev.Level)
                 {
                     ConsoleOperations.SecurityWarning();
+                    return 0;
                 }
                 else
                 {
@@ -72,159 +88,172 @@ namespace Microsoft.VS.Uninstaller
                 // Define base variables for use of primitives object; adding filters, uninstall actions, logging location, and default location of data files
                 ConsoleOperations.SetupPrimitivesValues(_debug, _donotprocess);
 
-                var cmd = string.Empty;
-                while (cmd != "quit")
+                // If /wixpdbs is used, .bin data file is generated for the user.
+                if (wixpdbsPaths != null && wixpdbsPaths.Length > 0)
                 {
-                    try
+                    foreach (var wixpdbPath in wixpdbsPaths)
                     {
-                        var cmdset = cmd.ToUpperInvariant().Split(' ');
-                        cmd = cmdset[0];
+                        ip.LoadFromWixpdb(wixpdbPath);
+                    }
 
-                        Logger.Log(String.Format(CultureInfo.InvariantCulture, "Command value passed from user: {0}", cmd), Logger.MessageLevel.Information, AppName);
-                        switch (cmd)
+                    ip.SaveToDataFile();
+                    Logger.Log("Data File generation operation is successful.  Exiting ...", Logger.MessageLevel.Information, AppName);
+                    return 0;
+                }
+                // Else uninstall Visual Studio 2013/2015/vNext
+                else
+                {
+                    if (!string.IsNullOrEmpty(dataFilePath) && File.Exists(dataFilePath))
+                    {
+                        ip.LoadFromDataFile(dataFilePath);
+                    }
+                    else
+                    {
+                        // load from embedded.
+                    }
+
+                    ip.Uninstall();
+                }
+
+                if (false)
+                {
+                    var cmd = string.Empty;
+                    while (cmd != "quit")
+                    {
+                        try
                         {
-                            #region Command processor
-                            case ConsoleOperations.COMMAND_COMPARE_TEMP:
-                                Logger.Log(String.Format(CultureInfo.InvariantCulture, "Temp directory command started."), Logger.MessageLevel.Verbose, AppName);
-                                ConsoleOperations.OpenTempDirectory();
-                                Logger.Log(String.Format(CultureInfo.InvariantCulture, "Temp directory command ended."), Logger.MessageLevel.Verbose, AppName);
-                                break;
-                            case ConsoleOperations.COMMAND_COMPARE_SELECT:
-                                Logger.Log(String.Format(CultureInfo.InvariantCulture, "Display select options command started."), Logger.MessageLevel.Verbose, AppName);
-                                ConsoleOperations.SelectReleaseFromAvailableBundles();
-                                Logger.Log(String.Format(CultureInfo.InvariantCulture, "Display select options command ended."), Logger.MessageLevel.Verbose, AppName);
-                                break;
-                            case ConsoleOperations.COMMAND_COMPARE_CREATE:
-                                Logger.Log(String.Format(CultureInfo.InvariantCulture, "Save command started."), Logger.MessageLevel.Verbose, AppName);
-                                ip.Processed = false;
-                                ip.GetDataFromPdb();
-                                ip.SaveAll();
-                                Logger.Log(String.Format(CultureInfo.InvariantCulture, "Save command ended."), Logger.MessageLevel.Verbose, AppName);
-                                break;
-                            case ConsoleOperations.COMMAND_COMPARE_LOAD:
-                                try
-                                {
-                                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "Load command started."), Logger.MessageLevel.Verbose, AppName);
-                                    // Load up object files from disk
-                                    Bundles = ip.LoadFromFiles();
-                                    Console.WriteLine("Files loaded successfully.");
-                                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "Load command ended."), Logger.MessageLevel.Verbose, AppName);
-                                }
-                                catch (Exception ex)
-                                {
-                                    Logger.Log(ex, AppName);
-                                    Console.WriteLine(ex.Message);
-                                }
-                                break;
-                            case ConsoleOperations.COMMAND_COMPARE_INSTALLED:
-                                Logger.Log(String.Format(CultureInfo.InvariantCulture, "What is installed command started."), Logger.MessageLevel.Verbose, AppName);
-                                // Using WindowsInstaller.Deployment to determine what is installed on the machine.
-                                var packages = ip.GetAllInstalledItems;
+                            var cmdset = cmd.ToUpperInvariant().Split(' ');
+                            cmd = cmdset[0];
 
-                                foreach (Package package in packages)
-                                {
-                                    var pname = package.ProductName.PadRight(50);
-                                    var pcode = package.ProductCode.ToString().PadRight(30);
-                                    Console.WriteLine(Logger.Log(String.Format(CultureInfo.InvariantCulture, "{0} {1}", pcode, pname), Logger.MessageLevel.Information, AppName));
-                                }
-                                Logger.Log(String.Format(CultureInfo.InvariantCulture, "What is installed command ended."), Logger.MessageLevel.Verbose, AppName);
-                                break;
-                            case ConsoleOperations.COMMAND_COMPARE_DIRECTORY:
-                                ConsoleOperations.ChangeWorkingDirectory(cmdset);
-                                break;
-                            case ConsoleOperations.COMMAND_COMPARE_LIST:  // What releases were loaded from config files or wixpdbs
-                                Logger.Log(String.Format(CultureInfo.InvariantCulture, "List releases command started."), Logger.MessageLevel.Verbose, AppName);
-                                Console.WriteLine(ConsoleOperations.PrintReleaseInfo());
-                                Logger.Log(String.Format(CultureInfo.InvariantCulture, "List releases command ended."), Logger.MessageLevel.Verbose, AppName);
-                                break;
-                            default:
-                                #region Make sure something is selected before executing these commands
-                                // Check for if something was selected
-                                if (ip.Releases.FirstOrDefault(x => x.Selected) != null)
-                                {
-                                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "Selection count is greater than 0."), Logger.MessageLevel.Information, AppName);
-                                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "Check if Bundles object has an objects populated."), Logger.MessageLevel.Verbose, AppName);
-                                    if (!ip.Processed)
+                            Logger.Log(String.Format(CultureInfo.InvariantCulture, "Command value passed from user: {0}", cmd), Logger.MessageLevel.Information, AppName);
+                            switch (cmd)
+                            {
+                                #region Command processor
+                                case ConsoleOperations.COMMAND_COMPARE_TEMP:
+                                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "Temp directory command started."), Logger.MessageLevel.Verbose, AppName);
+                                    ConsoleOperations.OpenTempDirectory();
+                                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "Temp directory command ended."), Logger.MessageLevel.Verbose, AppName);
+                                    break;
+                                case ConsoleOperations.COMMAND_COMPARE_SELECT:
+                                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "Display select options command started."), Logger.MessageLevel.Verbose, AppName);
+                                    ConsoleOperations.SelectReleaseFromAvailableBundles();
+                                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "Display select options command ended."), Logger.MessageLevel.Verbose, AppName);
+                                    break;
+                                case ConsoleOperations.COMMAND_COMPARE_CREATE:
+                                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "Save command started."), Logger.MessageLevel.Verbose, AppName);
+                                    ip.Processed = false;
+                                    ip.GetDataFromPdb();
+                                    ip.SaveAll();
+                                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "Save command ended."), Logger.MessageLevel.Verbose, AppName);
+                                    break;
+                                case ConsoleOperations.COMMAND_COMPARE_LOAD:
+                                    try
                                     {
-                                        Logger.Log(String.Format(CultureInfo.InvariantCulture, "Populate Bundles object started"), Logger.MessageLevel.Verbose, AppName);
-                                        Bundles = IfNotProcessed(ip);
-                                        Logger.Log(String.Format(CultureInfo.InvariantCulture, "Populate Bundles object ended"), Logger.MessageLevel.Verbose, AppName);
+                                        Logger.Log(String.Format(CultureInfo.InvariantCulture, "Load command started."), Logger.MessageLevel.Verbose, AppName);
+                                        Console.WriteLine("Files loaded successfully.");
+                                        Logger.Log(String.Format(CultureInfo.InvariantCulture, "Load command ended."), Logger.MessageLevel.Verbose, AppName);
                                     }
-                                    else { Bundles = ip.Releases.Where(x => x.Selected).ToList(); }
+                                    catch (Exception ex)
+                                    {
+                                        Logger.Log(ex, AppName);
+                                        Console.WriteLine(ex.Message);
+                                    }
+                                    break;
+                                case ConsoleOperations.COMMAND_COMPARE_INSTALLED:
+                                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "What is installed command started."), Logger.MessageLevel.Verbose, AppName);
+                                    // Using WindowsInstaller.Deployment to determine what is installed on the machine.
+                                    var packages = ip.GetAllInstalledItems;
 
-                                    switch (cmd) // Commands that require release(s) to be selected
+                                    foreach (Package package in packages)
                                     {
-                                        case ConsoleOperations.COMMAND_COMPARE_UNINSTALL:
-                                            Logger.Log(String.Format(CultureInfo.InvariantCulture, "Uninstall command started."), Logger.MessageLevel.Verbose, AppName);
-                                            ProcessUninstallBundles(ip, Bundles);
-                                            Logger.Log(String.Format(CultureInfo.InvariantCulture, "Uninstall command ended."), Logger.MessageLevel.Verbose, AppName);
-                                            break;
-                                        case ConsoleOperations.COMMAND_COMPARE_MSIS:
-                                            Logger.Log(String.Format(CultureInfo.InvariantCulture, "Uninstall MSI command started."), Logger.MessageLevel.Verbose, AppName);
-                                            ProcessUninstallMSIs(ip);
-                                            Logger.Log(String.Format(CultureInfo.InvariantCulture, "Uninstall MSI command ended."), Logger.MessageLevel.Verbose, AppName);
-                                            break;
-                                        case ConsoleOperations.COMMAND_COMPARE_VSINSTALLED:
-                                            // On a given machine, this what VS installed.
-                                            Logger.Log(String.Format(CultureInfo.InvariantCulture, "VS Installs command started."), Logger.MessageLevel.Verbose, AppName);
-                                            foreach (Bundle bundle in ip.GetAllInstalledItemsCompareWixPdb)
-                                            {
-                                                Console.WriteLine(bundle.Name);
-                                                foreach (Package package in bundle.Packages)
-                                                {
-                                                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "-- {0}", ip.ApplyFilter(package.ProductName).PadRight(40) + package.ProductCode.ToString().PadRight(30)), Logger.MessageLevel.Information, AppName);
-                                                    Console.WriteLine(String.Format(CultureInfo.InvariantCulture, "-- {0}", ip.ApplyFilter(package.ProductName).PadRight(40) + package.ProductCode.ToString().PadRight(30)));
-                                                }
-                                            }
-                                            Logger.Log(String.Format(CultureInfo.InvariantCulture, "VS Installs command ended."), Logger.MessageLevel.Verbose, AppName);
-                                            break;
-                                        case ConsoleOperations.COMMAND_COMPARE_LOGSELECTED:
-                                            // Writes out product name, product code, and package type
-                                            Logger.Log(String.Format(CultureInfo.InvariantCulture, "Log selected command started."), Logger.MessageLevel.Verbose, AppName);
-                                            foreach (Bundle bundle in Bundles)
-                                            {
-                                                Console.WriteLine(String.Format(CultureInfo.InvariantCulture, "Logging start: {0}", bundle.Name));
-                                                foreach (Package package in bundle.Packages)
-                                                {
-                                                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "-- {0}", ip.ApplyFilter(package.ProductName).PadRight(80) + package.ChainingPackage.PadRight(60) + package.ProductCode.ToString().PadRight(45)) + package.Type.ToString().PadRight(30), Logger.MessageLevel.Information, AppName);
-                                                }
-                                                Console.WriteLine(String.Format(CultureInfo.InvariantCulture, "Logging end: {0}", bundle.Name));
-                                            }
-                                            Logger.Log(String.Format(CultureInfo.InvariantCulture, "Log selected command started."), Logger.MessageLevel.Verbose, AppName);
-                                            break;
+                                        var pname = package.ProductName.PadRight(50);
+                                        var pcode = package.ProductCode.ToString().PadRight(30);
+                                        Console.WriteLine(Logger.Log(String.Format(CultureInfo.InvariantCulture, "{0} {1}", pcode, pname), Logger.MessageLevel.Information, AppName));
                                     }
-                                }
-                                else if ((Userselected.Count == 0) && (!String.IsNullOrEmpty(cmd)))
-                                {
-                                    Console.WriteLine(String.Format(CultureInfo.InvariantCulture, "Use the 'Select' command to determine which bundles you want to try \r\n to uninstall"));
-                                }
-                                break;  // End check for if something was selected
-                                #endregion
+                                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "What is installed command ended."), Logger.MessageLevel.Verbose, AppName);
+                                    break;
+                                case ConsoleOperations.COMMAND_COMPARE_DIRECTORY:
+                                    ConsoleOperations.ChangeWorkingDirectory(cmdset);
+                                    break;
+                                case ConsoleOperations.COMMAND_COMPARE_LIST:  // What releases were loaded from config files or wixpdbs
+                                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "List releases command started."), Logger.MessageLevel.Verbose, AppName);
+                                    Console.WriteLine(ConsoleOperations.PrintReleaseInfo());
+                                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "List releases command ended."), Logger.MessageLevel.Verbose, AppName);
+                                    break;
+                                default:
+                                    #region Make sure something is selected before executing these commands
+                                    // Check for if something was selected
+                                    if (ip.BundlesAndPackagesStore.Releases.FirstOrDefault(x => x.Selected) != null)
+                                    {
+                                        Logger.Log(String.Format(CultureInfo.InvariantCulture, "Selection count is greater than 0."), Logger.MessageLevel.Information, AppName);
+                                        Logger.Log(String.Format(CultureInfo.InvariantCulture, "Check if Bundles object has an objects populated."), Logger.MessageLevel.Verbose, AppName);
+                                        if (!ip.Processed)
+                                        {
+                                            Logger.Log(String.Format(CultureInfo.InvariantCulture, "Populate Bundles object started"), Logger.MessageLevel.Verbose, AppName);
+                                            Logger.Log(String.Format(CultureInfo.InvariantCulture, "Populate Bundles object ended"), Logger.MessageLevel.Verbose, AppName);
+                                        }
+
+                                        switch (cmd) // Commands that require release(s) to be selected
+                                        {
+                                            case ConsoleOperations.COMMAND_COMPARE_UNINSTALL:
+                                                Logger.Log(String.Format(CultureInfo.InvariantCulture, "Uninstall command started."), Logger.MessageLevel.Verbose, AppName);
+                                                Logger.Log(String.Format(CultureInfo.InvariantCulture, "Uninstall command ended."), Logger.MessageLevel.Verbose, AppName);
+                                                break;
+                                            case ConsoleOperations.COMMAND_COMPARE_MSIS:
+                                                Logger.Log(String.Format(CultureInfo.InvariantCulture, "Uninstall MSI command started."), Logger.MessageLevel.Verbose, AppName);
+                                                ProcessUninstallMSIs(ip);
+                                                Logger.Log(String.Format(CultureInfo.InvariantCulture, "Uninstall MSI command ended."), Logger.MessageLevel.Verbose, AppName);
+                                                break;
+                                            case ConsoleOperations.COMMAND_COMPARE_VSINSTALLED:
+                                                // On a given machine, this what VS installed.
+                                                Logger.Log(String.Format(CultureInfo.InvariantCulture, "VS Installs command started."), Logger.MessageLevel.Verbose, AppName);
+                                                foreach (Bundle bundle in ip.GetAllInstalledItemsCompareWixPdb)
+                                                {
+                                                    Console.WriteLine(bundle.Name);
+                                                    foreach (Package package in bundle.Packages)
+                                                    {
+                                                        Logger.Log(String.Format(CultureInfo.InvariantCulture, "-- {0}", ip.ApplyFilter(package.ProductName).PadRight(40) + package.ProductCode.ToString().PadRight(30)), Logger.MessageLevel.Information, AppName);
+                                                        Console.WriteLine(String.Format(CultureInfo.InvariantCulture, "-- {0}", ip.ApplyFilter(package.ProductName).PadRight(40) + package.ProductCode.ToString().PadRight(30)));
+                                                    }
+                                                }
+                                                Logger.Log(String.Format(CultureInfo.InvariantCulture, "VS Installs command ended."), Logger.MessageLevel.Verbose, AppName);
+                                                break;
+                                            case ConsoleOperations.COMMAND_COMPARE_LOGSELECTED:
+                                                // Writes out product name, product code, and package type
+                                                Logger.Log(String.Format(CultureInfo.InvariantCulture, "Log selected command started."), Logger.MessageLevel.Verbose, AppName);
+
+                                                Logger.Log(String.Format(CultureInfo.InvariantCulture, "Log selected command started."), Logger.MessageLevel.Verbose, AppName);
+                                                break;
+                                        }
+                                    }
+                                    break;  // End check for if something was selected
+                                    #endregion
+                            }
+                            #endregion
                         }
-                        #endregion
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine(Logger.Log(ex, AppName));
-                    }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine(Logger.Log(ex, AppName));
+                        }
 
-                    if (ConsoleOperations.Options.Where(x => x.CommandCompareValue.Contains(cmd)) == null)
-                    {
-                        Console.WriteLine("\r\nInvalid command. Please try again.\r");
-                    }
+                        if (ConsoleOperations.Options.Where(x => x.CommandCompareValue.Contains(cmd)) == null)
+                        {
+                            Console.WriteLine("\r\nInvalid command. Please try again.\r");
+                        }
 
-                    if (!String.IsNullOrEmpty(cmd))
-                    {
-                        Console.ForegroundColor = ConsoleColor.White;
-                        Console.WriteLine("\r\n\r\nPress any key to continue.");
-                        Console.ReadLine();
-                        Console.ResetColor();
+                        if (!String.IsNullOrEmpty(cmd))
+                        {
+                            Console.ForegroundColor = ConsoleColor.White;
+                            Console.WriteLine("\r\n\r\nPress any key to continue.");
+                            Console.ReadLine();
+                            Console.ResetColor();
+                            Console.Clear();
+                        }
+
+                        ConsoleOperations.GetUsage();
+                        cmd = Console.ReadLine();
                         Console.Clear();
                     }
-
-                    ConsoleOperations.GetUsage();
-                    cmd = Console.ReadLine();
-                    Console.Clear();
                 }
             }
             catch (Exception ex)
@@ -235,13 +264,15 @@ namespace Microsoft.VS.Uninstaller
             {
                 ip.Dispose();
             }
+
+            return 0;
         }
 
         private static ICollection<Bundle> IfNotProcessed(Primitives ip)
         {
             ICollection<Bundle> Bundles;
             Logger.Log(String.Format(CultureInfo.InvariantCulture, "Attempting to load data from wixpdbs."), Logger.MessageLevel.Information, AppName);
-            Bundles = ip.GetDataFromPdb(false);
+            Bundles = ip.GetDataFromPdb();
             if (Bundles.FirstOrDefault() == null)
             {
                 Logger.Log(String.Format(CultureInfo.InvariantCulture, "Attempting to load data from files."), Logger.MessageLevel.Information, AppName);
