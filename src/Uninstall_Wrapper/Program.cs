@@ -91,6 +91,7 @@ namespace Microsoft.VS.Uninstaller
                 // If /wixpdbs is used, .bin data file is generated for the user.
                 if (wixpdbsPaths != null && wixpdbsPaths.Length > 0)
                 {
+                    Logger.LogWithOutput("Generating data file from wixpdbs ....");
                     foreach (var wixpdbPath in wixpdbsPaths)
                     {
                         ip.LoadFromWixpdb(wixpdbPath);

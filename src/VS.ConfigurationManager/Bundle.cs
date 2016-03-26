@@ -60,7 +60,6 @@ namespace Microsoft.VS.ConfigurationManager
         public Bundle()
         {
             SetObjectVariables();
-            Packages = new List<Package>();
         }
 
         /// <summary>Bundle creation with values being passed in before hand.</summary>
@@ -70,7 +69,6 @@ namespace Microsoft.VS.ConfigurationManager
         public Bundle(System.Guid bundleid, string name, string version)
         {
             Initialize(bundleid, name, version);
-            Packages = new List<Package>();
         }
 
         /// <summary>Bundle creation for all parameters being passed in.</summary>
@@ -89,7 +87,6 @@ namespace Microsoft.VS.ConfigurationManager
             Path = path;
             FileType = filetype;
             Selected = selected;
-            Packages = packages;
         }
         /// <summary>
         /// Creating a bundle without passing package information
@@ -108,7 +105,6 @@ namespace Microsoft.VS.ConfigurationManager
             Path = path;
             FileType = filetype;
             Selected = selected;
-            Packages = new List<Package>();
         }
 
         private void Initialize(System.Guid passedbundleid, string name, string version)
@@ -146,9 +142,6 @@ namespace Microsoft.VS.ConfigurationManager
                 LocalInstallLocation = System.IO.Path.Combine(PackageCache, '{' + BundleId.ToString() + '}');
             }
         }
-
-        /// <summary>List of MSI (class) that includes all MSIs in the WiX bundle.</summary>
-        public ICollection<Package> Packages { get; set; }
 
         /// <summary>WiX Bundle Product Name</summary>
         public string Name { get; set; }

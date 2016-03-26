@@ -47,12 +47,10 @@ namespace Microsoft.VS.Uninstaller
             Console.WriteLine("\r\nPress enter to continue.");
             Console.ResetColor();
             Console.ReadLine();
-            Console.Clear();
         }
 
         static internal void SetConsoleAttributes()
         {
-            Console.Clear();
             Console.WindowHeight = Console.LargestWindowHeight < _height ? Console.LargestWindowHeight : _height;
             Console.WindowWidth = _width;
             Console.Title = "WixPdb sourced uninstall driver";
@@ -187,44 +185,7 @@ namespace Microsoft.VS.Uninstaller
             PrimitiveObject.DebugReporting = debug;
 
             //Initialize
-            Console.WriteLine(Logger.Log("Set filters in Primitives object", Logger.MessageLevel.Information, AppName));
-            Console.WriteLine(Logger.Log("Initializing configuration... Please wait.", Logger.MessageLevel.Information, AppName));
-            Console.WriteLine(Logger.Log("-----------------------------------------------------------------------", Logger.MessageLevel.Information, AppName));
             PrimitiveObject.Initialize();
-            Console.WriteLine(Logger.Log("Calling GetUsage for dialog prompt.", Logger.MessageLevel.Information, AppName));
-            Console.Clear();
-
-        }
-
-        internal static void SelectReleaseFromAvailableBundles()
-        {
-            Logger.Log(String.Format(CultureInfo.InvariantCulture, "Select command started."), Logger.MessageLevel.Verbose, AppName);
-            MsgRelease = PrimitiveObject.GetReleases;
-
-            Console.WriteLine(PrintReleaseInfo());
-            Console.WriteLine("Select which releases you would like to target for uninstall. No action will be taken yet. This is only selection.\r\n");
-            Console.Write("Use a comma separated list if you want to target multiple releases.  For a bundle to be uninstalled, it must be installed and in the package cache. ");
-            Console.Write("You can choose to uninstall a release you no longer have installed, but only MSIs associated will be uninstalled.  The bundle uninstall will not be available.\r\n");
-            Console.WriteLine("i.e. 1, 2, 14, 8");
-            Console.Write("> ");
-            var userselect = Console.ReadLine();
-
-            PrimitiveObject.SelectedReleases(userselect);
-            PrimitiveObject.ReleaseOutput = PrimitiveObject.GetReleases;
-            Logger.Log(String.Format(CultureInfo.InvariantCulture, "Select command ended."), Logger.MessageLevel.Verbose, AppName);
-        }
-
-        internal static string PrintReleaseInfo()
-        {
-            var _sb = new StringBuilder();
-            MsgRelease = PrimitiveObject.ReleaseOutput;
-            _sb.AppendLine("Releases supported");
-            _sb.AppendLine("-----------------------------------------------------------------------------");
-            _sb.AppendLine("Product".PadRight(60) + "Status".PadRight(20));
-            _sb.AppendLine(MsgRelease);
-            Logger.Log(MsgRelease, Logger.MessageLevel.Information, AppName);
-            _sb.AppendLine("-----------------------------------------------------------------------------");
-            return _sb.ToString();
         }
     }
 }

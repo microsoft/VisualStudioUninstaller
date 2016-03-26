@@ -29,13 +29,5 @@ namespace Microsoft.VS.ConfigurationManager
         {
             get; set;
         }
-
-        /// <summary>
-        /// DELETE
-        /// </summary>
-        public List<Bundle> Releases
-        {
-            get; set;
-        }
     }
 }
