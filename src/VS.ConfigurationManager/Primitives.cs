@@ -634,7 +634,10 @@ namespace Microsoft.VS.ConfigurationManager
                 var bundlerowinfo = (Wix.WixBundleRow)GetBundlesFromWixPDB(pdb).Rows[0];
 
                 var bundle = new Bundle(bundlerowinfo.BundleId, bundlerowinfo.Name, bundlerowinfo.Version, Path.GetFileNameWithoutExtension(path), Path.GetFullPath(path), FILETYPE_WIXPDB, false);
-                this.BundlesAndPackagesStore.Bundles.Add(bundle);
+                if (!this.BundlesAndPackagesStore.Bundles.Any(b => b.BundleId == bundle.BundleId))
+                {
+                    this.BundlesAndPackagesStore.Bundles.Add(bundle);
+                }
 
                 if (pdb.Output.Type == Wix.OutputType.Bundle)
                 {
