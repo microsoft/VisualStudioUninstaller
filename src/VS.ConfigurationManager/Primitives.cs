@@ -370,6 +370,26 @@ namespace Microsoft.VS.ConfigurationManager
         }
 
         /// <summary>
+        /// Load from a data file stream.
+        /// </summary>
+        ///<param name="stream"></param>
+        public void LoadFromDataFile(Stream stream)
+        {
+            // Generate file name based on configuration and name of the wixpdb
+            long position = 0;
+            // create a new formatter instance
+            var formatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
+
+            if (position < stream.Length)
+            {
+                stream.Seek(position, SeekOrigin.Begin);
+                this.BundlesAndPackagesStore = (BundlesAndPackagesStore)formatter.Deserialize(stream);
+                position = stream.Position;
+            }
+            formatter = null;
+        }
+
+        /// <summary>
         ///      <para>
         ///           Given a file that has been serialized out, this will read in the file and
         ///           hydrate the object model for a list of InstallableItem.

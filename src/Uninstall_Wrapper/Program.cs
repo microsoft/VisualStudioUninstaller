@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 
 namespace Microsoft.VS.Uninstaller
@@ -116,6 +117,13 @@ namespace Microsoft.VS.Uninstaller
                     else
                     {
                         // load from embedded.
+                        var assembly = Assembly.GetExecutingAssembly();
+                        var dataFile = "Microsoft.VisualStudio.Setup.DataFile.bin";
+
+                        using (Stream stream = assembly.GetManifestResourceStream(dataFile))
+                        {
+                            ip.LoadFromDataFile(stream);
+                        }
                     }
 
                     ip.InstalledVisualStudioReport();
