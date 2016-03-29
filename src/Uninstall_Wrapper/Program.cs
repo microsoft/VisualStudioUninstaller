@@ -28,6 +28,7 @@ namespace Microsoft.VS.Uninstaller
             string dataFilePath = string.Empty;
             //args = new string[] { "noprocess", @"/wixpdbs:C:\Users\tobyhu\Desktop\test\paths.txt" };
             //args = new string[] { "noprocess", @"/binfile:C:\Users\tobyhu\Desktop\test\DataFile.bin" };
+            //args = new string[] { "noprocess", @"/binfile:C:\Users\tobyhu\Desktop\test\DataFile.bin", @"/wixpdbs:\\dexshare01\Drops\tobyhu\wixpdbsPS\vsumain\Files.txt" };
             if (args != null && args.Count() > 0)
             {
                 foreach (var arg in args)
@@ -97,6 +98,12 @@ namespace Microsoft.VS.Uninstaller
                 // If /wixpdbs is used, .bin data file is generated for the user.
                 if (wixpdbsPaths != null && wixpdbsPaths.Length > 0)
                 {
+                    if (!string.IsNullOrEmpty(dataFilePath) && File.Exists(dataFilePath))
+                    {
+                        Logger.LogWithOutput(string.Format("Loading from {0}", dataFilePath));
+                        ip.LoadFromDataFile(dataFilePath);
+                    }
+
                     Logger.LogWithOutput("Generating data file from wixpdbs ....");
                     foreach (var wixpdbPath in wixpdbsPaths)
                     {
