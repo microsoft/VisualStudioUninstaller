@@ -23,7 +23,7 @@ namespace Microsoft.VS.ConfigurationManager
                 return System.IO.Path.GetTempPath();
             }
         }
-        private string ProgramData
+        private static string ProgramData
         {
             get
             {
@@ -37,7 +37,7 @@ namespace Microsoft.VS.ConfigurationManager
                 return System.IO.Path.Combine(Temp, @"Uninstall");
             }
         }
-        private string PackageCache
+        private static string PackageCache
         {
             get
             {
@@ -49,8 +49,8 @@ namespace Microsoft.VS.ConfigurationManager
                 return String.IsNullOrEmpty(cache) ? System.IO.Path.Combine(ProgramData, PackageCacheValue) : cache;
             }
         }
-        static private string cache = string.Empty;
-        private bool regcheck;
+        private static string cache = string.Empty;
+        private static bool regcheck;
 
         private System.Guid bundleid;
 

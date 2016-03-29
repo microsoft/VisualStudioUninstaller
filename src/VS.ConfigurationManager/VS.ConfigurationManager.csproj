@@ -20,7 +20,7 @@
   </PropertyGroup>
   <PropertyGroup>
     <ProjectGuid>{CACCC6E1-FCB8-4DBE-9159-0F8EAA69D27A}</ProjectGuid>
-    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|AnyCPU'">

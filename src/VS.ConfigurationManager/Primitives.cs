@@ -169,6 +169,131 @@ namespace Microsoft.VS.ConfigurationManager
             return installations;
         }
 
+        /// <summary>
+        /// Clean up HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\VisualStudio 
+        /// Clean up HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\VisualStudio
+        /// </summary>
+        public void CleanupVisualStudioRegistryHives()
+        {
+            var keyPaths = new string[] {
+                @"SOFTWARE\Microsoft\VisualStudio\12.0",
+                @"SOFTWARE\Microsoft\VisualStudio\14.0",
+                @"SOFTWARE\Microsoft\VisualStudio\15.0" };
+
+            foreach(var keyPath in keyPaths)
+            {
+                Logger.LogWithOutput(string.Format("Deleting registry: {0}", keyPath));
+                this.DeleteRegistryKey(keyPath);
+            }
+
+        }
+
+        private void DeleteRegistryKey(string keyPath)
+        {
+            try
+            {
+                var x86View = Win32.RegistryKey.OpenBaseKey(Win32.RegistryHive.LocalMachine, Win32.RegistryView.Registry32);
+                x86View.DeleteSubKeyTree(keyPath, false);
+
+                var x64View = Win32.RegistryKey.OpenBaseKey(Win32.RegistryHive.LocalMachine, Win32.RegistryView.Registry64);
+                x64View.DeleteSubKeyTree(keyPath, false);
+            }
+            catch (Exception ex)
+            {
+                Logger.Log(string.Format("Cannot delete registry with error: {0}", ex.Message));
+            }
+        }
+
+        /// <summary>
+        /// Cleanup %ProgramData%\Microsoft\VisualStudioSecondaryInstaller
+        /// </summary>
+        public void CleanupSecondaryInstallerCache()
+        {
+            try
+            {
+                if (Directory.Exists(CommonApplicationDataDirectory))
+                {
+                    Logger.LogWithOutput(string.Format("Deleting: {0}", CommonApplicationDataDirectory));
+                    this.RecursivelyDeleteFolder(CommonApplicationDataDirectory);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWithOutput(string.Format("Cannot delete Secondary Installer cache with error: {0}", ex.Message));
+            }
+        }
+
+        /// <summary>
+        /// Clean up sub-folders in %ProgramData%\Package Cache created by Visual Studio.
+        /// </summary>
+        public void CleanupVisualStudioPackageCache()
+        {
+            // TBD
+        }
+
+        private static string CommonApplicationDataDirectory
+        {
+            get
+            {
+                return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                                    Path.Combine(@"Microsoft", "VisualStudioSecondaryInstaller"));
+            }
+        }
+
+        /// <summary>
+        /// delete a folder and all its content
+        /// </summary>
+        /// <param name="folder"></param>
+        private void RecursivelyDeleteFolder(string folder)
+        {
+            foreach (string subDirectory in Directory.GetDirectories(folder))
+            {
+                RecursivelyDeleteFolder(subDirectory);
+            }
+
+            foreach (string file in Directory.GetFiles(folder))
+            {
+                DeleteFileIfExists(file);
+            }
+
+            Directory.Delete(folder);
+        }
+
+
+        private void DeleteFileIfExists(string filePath)
+        {
+            if (string.IsNullOrEmpty(filePath))
+            {
+                throw new ArgumentNullException("filePath");
+            }
+
+            if (File.Exists(filePath))
+            {
+                try
+                {
+                    File.Delete(filePath);
+                }
+                catch (IOException) // The specified file is in use. -or- ...
+                {
+                    System.Threading.Thread.Sleep(500);
+                    File.Delete(filePath);
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    // see if it was because file is read only
+                    System.IO.FileAttributes copiedFileAttributes = File.GetAttributes(filePath);
+                    if ((copiedFileAttributes & System.IO.FileAttributes.ReadOnly).Equals(System.IO.FileAttributes.ReadOnly))
+                    {
+                        // remove read only flag
+                        File.SetAttributes(filePath, copiedFileAttributes & ~System.IO.FileAttributes.ReadOnly);
+
+                        // try again
+                        File.Delete(filePath);
+                    }
+                }
+            }
+        }
+
         private string GetUpgradeCode(string installSource)
         {
             if (File.Exists(installSource))
@@ -357,11 +482,18 @@ namespace Microsoft.VS.ConfigurationManager
             var installedBundleStrings = installedBundles.Select<Bundle, string>(b =>
                 String.Format("(Name: {0}, Version: {1}, BundleId: {2})", b.Name, b.Version, b.BundleId)).ToArray();
 
-            Logger.LogWithOutput(string.Format(@"The following bundles were detected on your system: "), Logger.MessageLevel.Information, AppName);
-
-            foreach (var ib in installedBundleStrings)
+            if (installedBundleStrings.Count() > 0)
             {
-                Logger.LogWithOutput(string.Format(ib), Logger.MessageLevel.Information, AppName);
+                Logger.LogWithOutput(string.Format(@"The following bundles were detected on your system: "), Logger.MessageLevel.Information, AppName);
+
+                foreach (var ib in installedBundleStrings)
+                {
+                    Logger.LogWithOutput(string.Format(ib), Logger.MessageLevel.Information, AppName);
+                }
+            }
+            else
+            {
+                Logger.LogWithOutput(string.Format(@"No bundle found.  Uninstalling stale MSIs. "), Logger.MessageLevel.Information, AppName);
             }
         }
 

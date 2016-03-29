@@ -31,8 +31,13 @@ namespace Microsoft.VS.Uninstaller
             {
                 foreach (var arg in args)
                 {
-                    switch(arg)
+                    switch(arg.ToLowerInvariant())
                     {
+                        case "help":
+                        case "/help":
+                        case "/?":
+                            PrintUsage();
+                            return 0;
                         case "break":
                             Console.WriteLine("Program stopped, please attach debugger and then hit any key to continue.");
                             Console.ReadKey(true);
@@ -123,7 +128,11 @@ namespace Microsoft.VS.Uninstaller
                         if (exitCode == 3010)
                         {
                             Logger.LogWithOutput("Bundle requested to reboot the system.  Please reboot your computer and run this application again.");
+                            return 3010;
                         }
+                        ip.CleanupVisualStudioPackageCache();
+                        ip.CleanupSecondaryInstallerCache();
+                        ip.CleanupVisualStudioRegistryHives();
                     }
                     else
                     {
@@ -141,6 +150,19 @@ namespace Microsoft.VS.Uninstaller
             }
 
             return 0;
+        }
+
+        private static void PrintUsage()
+        {
+            Console.WriteLine("Welcome to Total Uninstaller.");
+            Console.WriteLine("Running this application will remove Visual Studio 2013/2015/vNext completely.");
+            Console.WriteLine("It should be used as the last resort to clean up your machine.");
+            Console.WriteLine("The application contains a master list of UpgradeCodes and ProductCode (if no UpgradeCode in the MSI) for all preview/RC/RTM releases of Visual Studio 2013/2015/vNext.");
+            Console.WriteLine("----------- Normal Usage --------------");
+            Console.WriteLine("Please run this application as administrator without any parameter.");
+            Console.WriteLine("----------- Advanced Usage ---------------------");
+            Console.WriteLine(@"/binfile:C:\Users\user\Desktop\test\DataFile.bin can be passed in to override the list of things to uninstall.");
+            Console.WriteLine(@"/wixpdbs:C:\Users\tobyhu\Desktop\test\paths.txt can be passed in to generate a data file.");
         }
 
         #endregion Private Methods
