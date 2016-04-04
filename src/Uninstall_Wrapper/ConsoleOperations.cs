@@ -65,7 +65,7 @@ namespace Microsoft.VS.Uninstaller
         static internal void SetUpLogging()
         {
             var time = DateTime.Now.ToString("MM-dd-yy-hhmmss", CultureInfo.InvariantCulture);
-            var logfilepath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "Microsoft.VS.Uninstaller_" + System.IO.Path.ChangeExtension(time, "log"));
+            var logfilepath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "dd_Microsoft.VS.Uninstaller_" + System.IO.Path.ChangeExtension(time, "log"));
             Logger.LogLocation = logfilepath;
             Logger.LoggingLevel = Logger.MessageLevel.Verbose;
             Logger.ConsoleOutput = true;
