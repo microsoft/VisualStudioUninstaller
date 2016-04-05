@@ -83,8 +83,6 @@ namespace Microsoft.VS.ConfigurationManager
         public Bundle(System.Guid bundleid, string name, string version, string releasepdb, string path, string filetype, bool selected, ICollection<Package> packages)
         {
             Initialize(bundleid, name, version);
-            ReleasePdb = releasepdb;
-            Path = path;
             FileType = filetype;
             Selected = selected;
         }
@@ -101,8 +99,6 @@ namespace Microsoft.VS.ConfigurationManager
         public Bundle(System.Guid bundleid, string name, string version, string releasepdb, string path, string filetype, bool selected)
         {
             Initialize(bundleid, name, version);
-            ReleasePdb = releasepdb;
-            Path = path;
             FileType = filetype;
             Selected = selected;
         }
@@ -162,18 +158,6 @@ namespace Microsoft.VS.ConfigurationManager
 
         /// <summary>Has the user selected this item for uninstall?</summary>
         public bool Selected { get; set; }
-        /// <summary>
-        /// Path to directory for the wixpdb/config file that created bundle
-        /// </summary>
-        public string Path { get; set; }
-        /// <summary>
-        /// Name of the WixPDB
-        /// </summary>
-        public string ReleasePdb { get; set; }
-        /// <summary>
-        /// Location of the serialized config file
-        /// </summary>
-        public string binPath { get; set; }
 
         private bool _installed;
 
