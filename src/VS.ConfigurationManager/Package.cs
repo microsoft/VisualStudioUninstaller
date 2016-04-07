@@ -214,7 +214,7 @@ namespace Microsoft.VS.ConfigurationManager
                     // Run msiexec from the system path only.
                     file = System.IO.Path.Combine(systemdir, msiEXEname);
                     // Quiet uninstall with no restart requested and logging enabled
-                    args = String.Format(CultureInfo.InvariantCulture, MSIUninstallArguments + "/x {0} /L*v \"{1}\"", this.ProductCode.ToString(), msilogfilename);
+                    args = String.Format(CultureInfo.InvariantCulture, MSIUninstallArguments + "/x {0} /L*v \"{1}\"", this.ProductCode.ToString(), "dd_" + msilogfilename);
                     Logger.Log(String.Format(CultureInfo.InvariantCulture, "Arguments: {0}", args));
 
                     exitcode = Utility.ExecuteProcess(file, args);
