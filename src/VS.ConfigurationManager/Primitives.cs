@@ -524,7 +524,25 @@ namespace Microsoft.VS.ConfigurationManager
         {
             List<Bundle> installedBundles = new List<Bundle>(this.BundlesAndPackagesStore.Bundles.Where(b => b.Installed));
 
+            List<Bundle> orderedBundles = new List<Bundle>();
+
             foreach (var ib in installedBundles)
+            {
+                if (!ib.Name.ToLowerInvariant().Contains(@"(kb"))
+                {
+                    orderedBundles.Add(ib);
+                }
+            }
+
+            foreach (var ib in installedBundles)
+            {
+                if (ib.Name.ToLowerInvariant().Contains(@"(kb"))
+                {
+                    orderedBundles.Add(ib);
+                }
+            }
+
+            foreach (var ib in orderedBundles)
             {
                 int exitCode = 0;
                 if (!this.DoNotExecuteProcess)
