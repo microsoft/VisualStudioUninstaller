@@ -34,7 +34,7 @@ namespace Microsoft.VS.ConfigurationManager
         {
             get
             {
-                return System.IO.Path.Combine(Temp, @"Uninstall");
+                return System.IO.Path.Combine(Temp, @"dd_Uninstall");
             }
         }
         private static string PackageCache
