@@ -201,7 +201,7 @@ namespace Microsoft.VS.ConfigurationManager
             {
                 case PackageType.MSI:
                     Logger.Log(String.Format(CultureInfo.InvariantCulture, "Installer: {0}", this.ProductName), Logger.MessageLevel.Information, AppName);
-                    var msilogfilename = System.IO.Path.ChangeExtension(LogLocation + "_" + this.ProductName.Replace(" ", string.Empty).ToString(), "log");
+                    var msilogfilename = LogLocation + "_" + System.IO.Path.ChangeExtension(this.NormalizeProductName(this.ProductName), "log");
                     // Run msiexec from the system path only.
                     file = System.IO.Path.Combine(systemdir, msiEXEname);
                     // Quiet uninstall with no restart requested and logging enabled
@@ -253,6 +253,11 @@ namespace Microsoft.VS.ConfigurationManager
                     break;
             }
             return exitcode;
+        }
+
+        private string NormalizeProductName(string productName)
+        {
+            return productName.Replace(" ", string.Empty).Replace("/", string.Empty);
         }
 
         #endregion Public Methods

@@ -179,7 +179,7 @@ namespace Microsoft.VS.ConfigurationManager
                     Logger.Log("Bundle uninstall called and bundle is installed.", Logger.MessageLevel.Information, AppName);
                     foreach (string file in Directory.GetFiles(LocalInstallLocation, "*.exe"))
                     {
-                        var bundlelogfilename = System.IO.Path.ChangeExtension(LogLocation + "_" + System.IO.Path.GetFileNameWithoutExtension(file), "log");
+                        var bundlelogfilename =  LogLocation + "_" + System.IO.Path.ChangeExtension(System.IO.Path.GetFileNameWithoutExtension(file), "log");
                         Logger.Log(String.Format(CultureInfo.InvariantCulture, "Installer: {0}", file), Logger.MessageLevel.Information, AppName);
                         var args = String.Format(CultureInfo.InvariantCulture, BundleUninstallArguments, bundlelogfilename);
                         Logger.Log(String.Format(CultureInfo.InvariantCulture, "Arguments: {0}", args), Logger.MessageLevel.Information, AppName);
