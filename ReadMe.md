@@ -50,6 +50,7 @@ To get the most out of the debug experience, I recommend the following:
   2. Open cmd.exe with Administrative privileges
   2. Execute Setup.ForcedUninstall.exe
   3. Press Y and hit enter to run the application.
+  4. If the application ask to reboot the system, please reboot the system, and rerun this application again.
 
 **Commands:**
 
