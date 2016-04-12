@@ -107,7 +107,6 @@ namespace Microsoft.VS.ConfigurationManager
         /// <returns></returns>
         public string ApplyFilter(string Source)
         {
-            Logger.Log(String.Format(CultureInfo.InvariantCulture, "Applying filters"), Logger.MessageLevel.Verbose, AppName);
             foreach (Filter fil in filters) { Source = Source.Replace(fil.ReplaceSource, fil.ReplaceValue); }
             return Source;
         }
@@ -137,19 +136,15 @@ namespace Microsoft.VS.ConfigurationManager
                 Logger.Log(String.Format(CultureInfo.InvariantCulture, "Do we already have an object in memory?", AppName), Logger.MessageLevel.Verbose, AppName);
                 if (installedmsis.FirstOrDefault() == null)
                 {
-                    var hi = ProductInstallation.GetProducts(null, null, UserContexts.All);
                     Logger.Log(String.Format(CultureInfo.InvariantCulture, "No installpackages object found - creating", AppName), Logger.MessageLevel.Verbose, AppName);
+                    
                     installations = ProductInstallation.GetProducts(null, null, UserContexts.All)
-                               .Where(ins => ins.ProductName != null)
                                .Select(ins => new Package(
                                                       this.GetUpgradeCode(ins.LocalPackage),
                                                       ins.ProductCode,
-                                                      ins.ProductVersion.ToString(),
-                                                      ApplyFilter(ins.ProductName),
-                                                      null,
-                                                      (DateTime)ins.InstallDate,
-                                                      ins.InstallLocation,
-                                                      ins.UrlInfoAbout
+                                                      ins.ProductVersion == null ? "0.0.0" : ins.ProductVersion.ToString(),
+                                                      ApplyFilter(string.IsNullOrEmpty(ins.ProductName) ? "(NOTDEFINED)" : ins.ProductName),
+                                                      null
                                                     )
                                                     )
                                .OrderBy(ins => ins.ProductName).ToList();
@@ -182,8 +177,11 @@ namespace Microsoft.VS.ConfigurationManager
 
             foreach(var keyPath in keyPaths)
             {
-                Logger.LogWithOutput(string.Format("Deleting registry: {0}", keyPath));
-                this.DeleteRegistryKey(keyPath);
+                if (!this.DoNotExecuteProcess)
+                {
+                    Logger.LogWithOutput(string.Format("Deleting registry: {0}", keyPath));
+                    this.DeleteRegistryKey(keyPath);
+                }
             }
 
         }
@@ -211,7 +209,7 @@ namespace Microsoft.VS.ConfigurationManager
         {
             try
             {
-                if (Directory.Exists(CommonApplicationDataDirectory))
+                if (Directory.Exists(CommonApplicationDataDirectory) && !this.DoNotExecuteProcess)
                 {
                     Logger.LogWithOutput(string.Format("Deleting: {0}", CommonApplicationDataDirectory));
                     this.RecursivelyDeleteFolder(CommonApplicationDataDirectory);

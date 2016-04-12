@@ -102,7 +102,7 @@ namespace Microsoft.VS.ConfigurationManager
         /// <param name="installDate"></param>
         /// <param name="installLocation"></param>
         /// <param name="url"></param>
-        public Package(string upgradecode, string productcode, string productversion, string productname, string chainingpackage, DateTime installDate, string installLocation, System.Uri url)
+        public Package(string upgradecode, string productcode, string productversion, string productname, string chainingpackage)
         {
             Initialize();
             Type = PackageType.MSI;
@@ -111,9 +111,6 @@ namespace Microsoft.VS.ConfigurationManager
             ProductVersion = productversion;
             ProductName = productname;
             ChainingPackage = chainingpackage;
-            InstallDate = installDate;
-            InstallLocation = installLocation;
-            Url = url;
         }
 
         /// <summary>
@@ -126,7 +123,7 @@ namespace Microsoft.VS.ConfigurationManager
         /// <param name="installDate"></param>
         /// <param name="installLocation"></param>
         /// <param name="url"></param>
-        public Package(string productcode, string productversion, string productname, string chainingpackage, DateTime installDate, string installLocation, System.Uri url)
+        public Package(string productcode, string productversion, string productname, string chainingpackage)
         {
             Initialize();
             Type = PackageType.MSI;
@@ -134,9 +131,6 @@ namespace Microsoft.VS.ConfigurationManager
             ProductVersion = productversion;
             ProductName = productname;
             ChainingPackage = chainingpackage;
-            InstallDate = installDate;
-            InstallLocation = installLocation;
-            Url = url;
         }
         /// <summary>
         /// Overloaded value to allow a different value for PackageType to be set.
@@ -149,7 +143,7 @@ namespace Microsoft.VS.ConfigurationManager
         /// <param name="installLocation"></param>
         /// <param name="url"></param>
         /// <param name="type"></param>
-        public Package(string productcode, string productversion, string productname, string chainingpackage, DateTime installDate, string installLocation, System.Uri url, PackageType type)
+        public Package(string productcode, string productversion, string productname, string chainingpackage, PackageType type)
         {
             Initialize();
             Type = type;
@@ -157,9 +151,6 @@ namespace Microsoft.VS.ConfigurationManager
             ProductVersion = productversion;
             ProductName = productname;
             ChainingPackage = chainingpackage;
-            InstallDate = installDate;
-            InstallLocation = installLocation;
-            Url = url;
         }
         #endregion Public Constructors
 

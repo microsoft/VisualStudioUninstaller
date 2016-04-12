@@ -26,9 +26,9 @@ namespace Microsoft.VS.Uninstaller
             string wixpdbsPathsFile = string.Empty;
             string[] wixpdbsPaths = null;
             string dataFilePath = string.Empty;
-            //args = new string[] { "noprocess", @"/wixpdbs:C:\Users\tobyhu\Desktop\test\paths.txt" };
-            //args = new string[] { "noprocess", @"/binfile:C:\Users\tobyhu\Desktop\test\DataFile.bin" };
-            //args = new string[] { "noprocess", @"/binfile:C:\Users\tobyhu\Desktop\test\DataFile.bin", @"/wixpdbs:\\dexshare01\Drops\tobyhu\wixpdbsPS\vsumain\Files.txt" };
+            //args = new string[] { "noprocess", @"/wixpdbs:C:\Users\user\Desktop\test\paths.txt" };
+            //args = new string[] { "noprocess", @"/binfile:C:\Users\user\Desktop\test\DataFile.bin" };
+            //args = new string[] { "noprocess", @"/binfile:C:\Users\user\Desktop\test\DataFile.bin", @"/wixpdbs:\\myshare\Drops\user\wixpdbsPS\sub\Files.txt" };
             if (args != null && args.Count() > 0)
             {
                 foreach (var arg in args)
@@ -132,8 +132,10 @@ namespace Microsoft.VS.Uninstaller
                             ip.LoadFromDataFile(stream);
                         }
                     }
-
+                    
                     ip.InstalledVisualStudioReport();
+                    Logger.LogWithOutput("WARNING: This executable is designed to cleanup/scorch all Preview/RC/RTM releases of Visual Studio 2013, Visual Studio 2015 and Visual Studio vNext.");
+                    Logger.LogWithOutput("It should be used as the last resort to clean up the user's system before resorting to reimaging the machine. ");
                     Logger.LogWithOutput("Would you like to continue? [Y/N]");
                     var action = Console.ReadLine();
                     if (!string.IsNullOrEmpty(action) && action.StartsWith("y", StringComparison.OrdinalIgnoreCase))
@@ -172,12 +174,8 @@ namespace Microsoft.VS.Uninstaller
             Console.WriteLine("Welcome to Total Uninstaller.");
             Console.WriteLine("Running this application will remove Visual Studio 2013/2015/vNext completely.");
             Console.WriteLine("It should be used as the last resort to clean up your machine.");
-            Console.WriteLine("The application contains a master list of UpgradeCodes and ProductCode (if no UpgradeCode in the MSI) for all preview/RC/RTM releases of Visual Studio 2013/2015/vNext.");
             Console.WriteLine("----------- Normal Usage --------------");
             Console.WriteLine("Please run this application as administrator without any parameter.");
-            Console.WriteLine("----------- Advanced Usage ---------------------");
-            Console.WriteLine(@"/binfile:C:\Users\user\Desktop\test\DataFile.bin can be passed in to override the list of things to uninstall.");
-            Console.WriteLine(@"/wixpdbs:C:\Users\tobyhu\Desktop\test\paths.txt can be passed in to generate a data file.");
         }
 
         #endregion Private Methods

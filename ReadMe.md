@@ -1,7 +1,14 @@
-Visual Studio Uninstaller
+﻿Visual Studio Uninstaller
 =========
 
-Visual Studio Uninstallation sometimes can be unreliable and often leave out a lot of unwanted artifacts.  Visual Studio Uninstaller is designed to thoroughly and reliably remove these unwanted artifacts.
+This executable is designed to cleanup/scorch all Preview/RC/RTM releases of Visual Studio 2013, Visual Studio 2015 and Visual Studio vNext.  It should be used as the last resort to clean up the user's system before resorting to reimaging the machine. 
+
+Running this application will break Visual Studio 2012 and earlier versions of Visual Studio because Visual Studio 2012 have some MSIs that have the same upgrade codes as Visual Studio 2013 and above.
+
+How it works?
+========
+
+This app finds and uninstall every Preview/RC/RTM releases of Visual Studio 2013/2015/vNext.  It will first execute uninstall command on the bundle, and then it will uninstall any stale MSIs.  The application contains a master list of Bundle IDs and upgrade codes for every MSI ever chained in by Visual Studio 2013-vNext.  It will not uninstall MSU or MSIs that marked as ReallyPermanent.  
 
 Status
 ========
@@ -24,12 +31,7 @@ Usage
 
 **How to debug Total Uninstaller remotely?**
 
-Uncommenting the following lines will not execute the actual uninstall.  A debug flag will be added in the future.
-
-           //uti.bDebug = op.Debug; ip.DebugReporting = op.Debug;
-           //ip.DoNotExecuteProcess = true;
-
-Note: Do not run this on your development machine without setting the `DoNotExecuteProcess` flag.  This will prevent the application from uninstalling the very development environment you are working from.   
+IMPORTANT: Do not run this on your development machine without setting the `DoNotExecuteProcess` flag.  This will prevent the application from uninstalling the very development environment you are working from.   
 
 To get the most out of the debug experience, I recommend the following:
 
@@ -44,14 +46,16 @@ To get the most out of the debug experience, I recommend the following:
 
 **Using Total Uninstall:**
 
-  1. The user identifies which SKU of which release he wants to uninstall.
-  2. The user downloads one or more data files (from `DataFiles` folder) to a local folder.
-  3. The user executes Total Uninstaller and then `dir` to the directory containing the config files.
-  4. The user executes `load` command to the config files.
-  5. The user executes `list` to show which SKU and release is selected and installed.
-  6. The user executes `select` to select which SKU, release, version he wants to uninstall.
+  1. Download and unzip the zip file to a folder.
+  2. Open cmd.exe with Administrative privileges
+  2. Execute Setup.ForcedUninstall.exe
+  3. Press Y and hit enter to run the application.
 
-The user executes `uninstall` to perform the total uninstall.
+**Commands:**
+
+  1. help or /help or /? : Print usage.
+  2. break : run the application and pause until the user hit any key.
+  3. noprocess : run the application but does not uninstall anything.
 
 Roadmap
 ========
