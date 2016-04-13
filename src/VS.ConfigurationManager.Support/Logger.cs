@@ -140,6 +140,20 @@ namespace Microsoft.VS.ConfigurationManager.Support
 
         }
 
+        /// <summary>
+        /// Logging source location as well as event level
+        /// </summary>
+        /// <param name="logtext"></param>
+        /// <param name="eventlevel"></param>
+        /// <param name="source"></param>
+        /// <param name="consoleOut"></param>
+        /// <returns></returns>
+        public static string LogWithOutput(string logtext, MessageLevel eventlevel = MessageLevel.Information, string source = "Default")
+        {
+            Console.WriteLine(logtext);
+            return Log(logtext, eventlevel, source);
+        }
+
         #endregion Log Overloads
 
         private static void GenerateOutputMessage(string logtext, MessageLevel prefix, string source)

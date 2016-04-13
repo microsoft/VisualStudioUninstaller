@@ -26,21 +26,8 @@ namespace Microsoft.VS.ConfigurationManager
         /// Current machine architecture
         /// </summary>
         public ArchitectureConfiguration MachineArchitectureConfiguration { get; set; }
-        /// <summary>
-        /// List of installed MSIs on this machine when (Processed)
-        /// </summary>
-        public ICollection<Package> InstalledPackages
-        {
-            get { return InstalledPackages; }
-        }
 
-        /// <summary>
-        /// List of releases supported by this application when (Processed)
-        /// </summary>
-        public ICollection<Bundle> Releases
-        {
-            get { return releases; }
-        }
+        public BundlesAndPackagesStore BundlesAndPackagesStore { get; set; }
 
         /// <summary>
         /// Flag for ensuring data is loaded successfully.
@@ -102,6 +89,17 @@ namespace Microsoft.VS.ConfigurationManager
         #region Public Methods
 
         /// <summary>
+        /// Constructor.
+        /// </summary>
+        public Primitives()
+        {
+            this.BundlesAndPackagesStore = new BundlesAndPackagesStore();
+            this.BundlesAndPackagesStore.UpgradeCodeHash = new HashSet<string>();
+            this.BundlesAndPackagesStore.NoUpgradeCodeProductCodeHash = new HashSet<string>();
+            this.BundlesAndPackagesStore.Bundles = new List<Bundle>();
+        }
+
+        /// <summary>
         ///      Using the List of Filter classes, do a replace of strings per the user's
         ///      specification.
         /// </summary>
@@ -109,7 +107,6 @@ namespace Microsoft.VS.ConfigurationManager
         /// <returns></returns>
         public string ApplyFilter(string Source)
         {
-            Logger.Log(String.Format(CultureInfo.InvariantCulture, "Applying filters"), Logger.MessageLevel.Verbose, AppName);
             foreach (Filter fil in filters) { Source = Source.Replace(fil.ReplaceSource, fil.ReplaceValue); }
             return Source;
         }
@@ -126,221 +123,207 @@ namespace Microsoft.VS.ConfigurationManager
         }
 
         /// <summary>
-        /// Identifies all the selected releases based on the passed in values from the user
-        /// </summary>
-        /// <param name="userselect"></param>
-        public void SelectedReleases(string userselect)
-        {
-            Logger.Log(String.Format(CultureInfo.InvariantCulture, "Selection passed: {0}", userselect), Logger.MessageLevel.Information, AppName);
-            var selected = userselect.Split(',').Select(i => i.Trim()).ToList();
-            Logger.Log(String.Format(CultureInfo.InvariantCulture, "Selected releases: {0}", userselect.Count().ToString(CultureInfo.InvariantCulture)));
-
-            foreach (string id in selected)
-            {
-                // 0-based array
-                var pos = Convert.ToInt32(id, CultureInfo.InvariantCulture) - 1;
-                Logger.Log(String.Format(CultureInfo.InvariantCulture, "Installed: {0} ({1})", Releases.ElementAt(pos).Name, Releases.ElementAt(pos).Installed.ToString()));
-                Logger.Log(String.Format(CultureInfo.InvariantCulture, "Selected set to true: {0}", Releases.ElementAt(pos).Name));
-                if (pos <= this.Releases.Count())
-                {
-                    this.Releases.ElementAtOrDefault(pos).Selected = true;
-                }
-            }
-        }
-
-
-        /// <summary>
         /// GetInstalledItems lists all items that are installed on this machine.
         /// </summary>
         /// <returns></returns>
-        public ICollection<Package> GetAllInstalledItems
+        public ICollection<Package> GetAllInstalledItems()
         {
-            get
-            {
-                Logger.Log(String.Format(CultureInfo.InvariantCulture, "Getting all installed items", AppName), Logger.MessageLevel.Information, AppName);
-                ICollection<Package> installations = new List<Package>();
+            Logger.Log(String.Format(CultureInfo.InvariantCulture, "Getting all installed items", AppName), Logger.MessageLevel.Information, AppName);
+            ICollection<Package> installations = new List<Package>();
 
-                try
+            try
+            {
+                Logger.Log(String.Format(CultureInfo.InvariantCulture, "Do we already have an object in memory?", AppName), Logger.MessageLevel.Verbose, AppName);
+                if (installedmsis.FirstOrDefault() == null)
                 {
-                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "Do we already have an object in memory?", AppName), Logger.MessageLevel.Verbose, AppName);
-                    if (installedmsis.FirstOrDefault() == null)
-                    {
-                        Logger.Log(String.Format(CultureInfo.InvariantCulture, "No installpackages object found - creating", AppName), Logger.MessageLevel.Verbose, AppName);
-                        installations = ProductInstallation.GetProducts(null, null, UserContexts.All)
-                                   .Where(ins => ins.ProductName != null)
-                                   .Select(ins => new Package(ins.ProductCode,
-                                                          ins.ProductVersion.ToString(),
-                                                          ApplyFilter(ins.ProductName),
-                                                          null,
-                                                          (DateTime)ins.InstallDate,
-                                                          ins.InstallLocation,
-                                                          ins.UrlInfoAbout
-                                                        )
-                                                        )
-                                   .OrderBy(ins => ins.ProductName).ToList();
-                        Logger.Log(String.Format(CultureInfo.InvariantCulture, "Packages installed: {0}", installations.Count().ToString(CultureInfo.InvariantCulture)));
-                    }
-                    else
-                    {
-                        Logger.Log("installedpackages is populated.");
-                        installations = (List<Package>)installedmsis;
-                    }
+                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "No installpackages object found - creating", AppName), Logger.MessageLevel.Verbose, AppName);
+                    
+                    installations = ProductInstallation.GetProducts(null, null, UserContexts.All)
+                               .Select(ins => new Package(
+                                                      this.GetUpgradeCode(ins.LocalPackage),
+                                                      ins.ProductCode,
+                                                      ins.ProductVersion == null ? "0.0.0" : ins.ProductVersion.ToString(),
+                                                      ApplyFilter(string.IsNullOrEmpty(ins.ProductName) ? "(NOTDEFINED)" : ins.ProductName),
+                                                      null
+                                                    )
+                                                    )
+                               .OrderBy(ins => ins.ProductName).ToList();
+                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "Packages installed: {0}", installations.Count().ToString(CultureInfo.InvariantCulture)));
                 }
-                catch (Exception ex)
+                else
                 {
-                    Logger.Log(ex.Message, Logger.MessageLevel.Error, AppName);
+                    Logger.Log("installedpackages is populated.");
+                    installations = (List<Package>)installedmsis;
                 }
-                installedmsis = installations;
-                return installations;
+            }
+            catch (Exception ex)
+            {
+                Logger.Log(ex.Message, Logger.MessageLevel.Error, AppName);
+            }
+            installedmsis = installations;
+            return installations;
+        }
+
+        /// <summary>
+        /// Clean up HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\VisualStudio 
+        /// Clean up HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\VisualStudio
+        /// </summary>
+        public void CleanupVisualStudioRegistryHives()
+        {
+            var keyPaths = new string[] {
+                @"SOFTWARE\Microsoft\VisualStudio\12.0",
+                @"SOFTWARE\Microsoft\VisualStudio\14.0",
+                @"SOFTWARE\Microsoft\VisualStudio\15.0" };
+
+            foreach(var keyPath in keyPaths)
+            {
+                if (!this.DoNotExecuteProcess)
+                {
+                    Logger.LogWithOutput(string.Format("Deleting registry: {0}", keyPath));
+                    this.DeleteRegistryKey(keyPath);
+                }
+            }
+
+        }
+
+        private void DeleteRegistryKey(string keyPath)
+        {
+            try
+            {
+                var x86View = Win32.RegistryKey.OpenBaseKey(Win32.RegistryHive.LocalMachine, Win32.RegistryView.Registry32);
+                x86View.DeleteSubKeyTree(keyPath, false);
+
+                var x64View = Win32.RegistryKey.OpenBaseKey(Win32.RegistryHive.LocalMachine, Win32.RegistryView.Registry64);
+                x64View.DeleteSubKeyTree(keyPath, false);
+            }
+            catch (Exception ex)
+            {
+                Logger.Log(string.Format("Cannot delete registry with error: {0}", ex.Message));
             }
         }
 
         /// <summary>
-        ///      <para>
-        ///           GetAllInstalledItemsCompareWixPdb lists all items that are installed on this
-        ///           machine.
-        ///      </para>
-        ///      <para>
-        ///           It restricts the list to items that are being searched for based on the WixPdb
-        ///           configuration that is loaded.
-        ///      </para>
+        /// Cleanup %ProgramData%\Microsoft\VisualStudioSecondaryInstaller
         /// </summary>
-        /// <returns></returns>
-        public ICollection<Bundle> GetAllInstalledItemsCompareWixPdb
+        public void CleanupSecondaryInstallerCache()
+        {
+            try
+            {
+                if (Directory.Exists(CommonApplicationDataDirectory) && !this.DoNotExecuteProcess)
+                {
+                    Logger.LogWithOutput(string.Format("Deleting: {0}", CommonApplicationDataDirectory));
+                    this.RecursivelyDeleteFolder(CommonApplicationDataDirectory);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWithOutput(string.Format("Cannot delete Secondary Installer cache with error: {0}", ex.Message));
+            }
+        }
+
+        /// <summary>
+        /// Clean up sub-folders in %ProgramData%\Package Cache created by Visual Studio.
+        /// </summary>
+        public void CleanupVisualStudioPackageCache()
+        {
+            // TBD
+        }
+
+        private static string CommonApplicationDataDirectory
         {
             get
             {
-                ICollection<Bundle> outBundles = new List<Bundle>();
-                Bundle outBundle = null;
-                ICollection<Package> installations = null;
+                return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                                    Path.Combine(@"Microsoft", "VisualStudioSecondaryInstaller"));
+            }
+        }
 
+        /// <summary>
+        /// delete a folder and all its content
+        /// </summary>
+        /// <param name="folder"></param>
+        private void RecursivelyDeleteFolder(string folder)
+        {
+            foreach (string subDirectory in Directory.GetDirectories(folder))
+            {
+                RecursivelyDeleteFolder(subDirectory);
+            }
+
+            foreach (string file in Directory.GetFiles(folder))
+            {
+                DeleteFileIfExists(file);
+            }
+
+            Directory.Delete(folder);
+        }
+
+
+        private void DeleteFileIfExists(string filePath)
+        {
+            if (string.IsNullOrEmpty(filePath))
+            {
+                throw new ArgumentNullException("filePath");
+            }
+
+            if (File.Exists(filePath))
+            {
                 try
                 {
-                    Logger.Log("GetAllInstalledItemsCompareWixPdb start");
-                    installations = this.GetAllInstalledItems;
-                    var installableitems = releases.Where(rel => rel.Selected).ToList();
-                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "Total releases: {0}", releases.Count().ToString(CultureInfo.InvariantCulture)), Logger.MessageLevel.Information, AppName);
-                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "Selected releases: {0}", releases.Count(rel => rel.Selected == true).ToString(CultureInfo.InvariantCulture)), Logger.MessageLevel.Information, AppName);
-                    foreach (Bundle bundle in installableitems)
+                    File.Delete(filePath);
+                }
+                catch (IOException) // The specified file is in use. -or- ...
+                {
+                    System.Threading.Thread.Sleep(500);
+                    File.Delete(filePath);
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    // see if it was because file is read only
+                    System.IO.FileAttributes copiedFileAttributes = File.GetAttributes(filePath);
+                    if ((copiedFileAttributes & System.IO.FileAttributes.ReadOnly).Equals(System.IO.FileAttributes.ReadOnly))
                     {
-                        var  msis = bundle.Packages;
-                        Logger.Log(String.Format(CultureInfo.InvariantCulture, "Populating bundle: {0}", bundle.Name), Logger.MessageLevel.Verbose, AppName);
-                        var query = from ins in installations
-                                    join installable in msis on ins.ProductCode equals installable.ProductCode
-                                    select new Package
-                                    {
-                                        InstallDate = ins.InstallDate,
-                                        ProductName = ins.ProductName,
-                                        InstallLocation = ins.InstallLocation,
-                                        ProductCode = ins.ProductCode,
-                                        ProductVersion = ins.ProductVersion,
-                                        Url = ins.Url,
-                                        ChainingPackage = installable.ChainingPackage
-                                    };
+                        // remove read only flag
+                        File.SetAttributes(filePath, copiedFileAttributes & ~System.IO.FileAttributes.ReadOnly);
 
-                        if (query != null)
+                        // try again
+                        File.Delete(filePath);
+                    }
+                }
+            }
+        }
+
+        private string GetUpgradeCode(string installSource)
+        {
+            if (File.Exists(installSource))
+            {
+                try
+                {
+                    using (var database = new Database(installSource, DatabaseOpenMode.ReadOnly))
+                    {
+                        using (var view = database.OpenView(database.Tables["Property"].SqlSelectString))
                         {
-                            outBundle = bundle;
-                            outBundle.Packages.Clear();
-                            foreach (Package package in query)
+                            view.Execute();
+                            foreach (var rec in view)
                             {
-                                outBundle.Packages.Add(package);
+                                if ("UpgradeCode".Equals(rec.GetString("Property"), StringComparison.OrdinalIgnoreCase))
+                                {
+                                    return rec.GetString("Value");
+                                }
                             }
-                            outBundles.Add(outBundle);
-                        }
-                        else
-                        {
-                            Logger.Log(" - GetAllInstalledItemsCompareWixPdb - Query resulted in no results", Logger.MessageLevel.Information, AppName);
                         }
                     }
                 }
-                catch (Exception ex)
+                catch(Exception e)
                 {
-                    Logger.Log(ex);
+                    Logger.Log(e);
                 }
-                Logger.Log("GetAllInstalledItemsCompareWixPdb end", Logger.MessageLevel.Information, AppName);
-                return outBundles;
             }
-        }
-
-        /// <summary>
-        /// Pull information from WixPdbs unless processing has already happened.  getall overrides this behavior.
-        /// </summary>
-        /// <param name="getall"></param>
-        /// <returns></returns>
-        public ICollection<Bundle> GetDataFromPdb(bool getall = true)
-        {
-            var bun = GetDataFromPdb(releases, getall);
-            return bun;
-        }
-
-        /// <summary> <para>This function returns a list of installable items based on a
-        /// pre-selected list of releases passed in.</para> <para>It can take an array of releases
-        /// or a single release. Pass in no value for release and it will return for all configured
-        /// releases.</para> <para>string rel - Single release passed results in limiting the list
-        /// to that release</para> </summary> <param name="rel"></param>
-        public ICollection<Bundle> GetDataFromPdb(string rel)
-        {
-            var rels = new List<Bundle>();
-            rels = releases.Where(x => x.ReleasePdb == rel).ToList();
-            var bun = GetDataFromPdb(rels, false);
-            return bun;
-        }
-
-        /// <summary> <para>This function returns a list of installable items based on a
-        /// pre-selected list of releases passed in.</para> <para>It can take an array of releases
-        /// or a single release. Pass in no value for release and it will return for all configured
-        /// releases.</para> <para>string[] rel - Passing multiple items will iterate through all
-        /// matched WixPdbs</para> </summary> <param name="rel"></param>
-        public ICollection<Bundle> GetDataFromPdb(string[] rel)
-        {
-            var rels = new List<Bundle>();
-            foreach (string releasename in rel)
+            else
             {
-                rels.Add(releases.FirstOrDefault(x => x.ReleasePdb == releasename && x.FileType == FILETYPE_WIXPDB));
+                Logger.Log(string.Format("The {0} doesn't exist, cannot find upgrade code.", installSource));
             }
-            var bun = GetDataFromPdb(rels, false);
-            return bun;
-        }
 
-        /// <summary>
-        ///      Produces a string that lists all the releases that are being parsed from the
-        ///      WixPdb.
-        /// </summary>
-        /// <returns></returns>
-        public string GetReleases
-        {
-            get
-            {
-                Logger.Log("GetRelease started", Logger.MessageLevel.Information, AppName);
-                string releasestring;
-                var sb = new StringBuilder();
-                var i = 1;
-
-                foreach (Bundle rel in releases)
-                {
-                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "Adding bundle: {0}", rel.Name), Logger.MessageLevel.Verbose, AppName);
-                    var installvalue = new StringBuilder();
-                    if (rel.Installed) { installvalue.Append("Installed"); }
-                    if (rel.Selected)
-                    {
-                        installvalue.Append(String.IsNullOrEmpty(installvalue.ToString()) ? string.Empty : ", ");
-                        installvalue.Append("Selected");
-                    }
-                    installvalue.Insert(0, "[");
-                    installvalue.Append("]");
-
-                    sb.Append(i.ToString(CultureInfo.InvariantCulture).PadLeft(2) + ". " + ApplyFilter(rel.Name).PadRight(55));
-                    sb.Append(installvalue.ToString());
-                    sb.AppendLine();
-                    i++;
-                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "Added bundle: {0}", rel.Name), Logger.MessageLevel.Verbose, AppName);
-                }
-
-                releasestring = sb.ToString();
-                Logger.Log("GetRelease ended", Logger.MessageLevel.Information, AppName);
-                return releasestring;
-            }
+            return string.Empty;
         }
 
         /// <summary>
@@ -352,9 +335,6 @@ namespace Microsoft.VS.ConfigurationManager
             {
                 // Get all files that are in the content directory. Record them as a Bundle for
                 // later usage. Additionally, check the install state of each Bundle.
-                releases = new List<Bundle>();
-                GetContent(ref releases, DataFilesPath);
-                ReleaseOutput = String.IsNullOrEmpty(releaseoutput) ? GetReleases : releaseoutput;
                 Logger.Log(String.Format(CultureInfo.InvariantCulture, "Initialize called successfully."), Logger.MessageLevel.Information, AppName);
                 Processed = false;
             }
@@ -362,6 +342,49 @@ namespace Microsoft.VS.ConfigurationManager
             {
                 Logger.Log(ex.Message, Logger.MessageLevel.Error, AppName);
             }
+        }
+
+        /// <summary>
+        /// Load from a data file.
+        /// </summary>
+        /// <param name="path"></param>
+        public void LoadFromDataFile(string path)
+        {
+            // Generate file name based on configuration and name of the wixpdb
+            long position = 0;
+            // create a new formatter instance
+            var formatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
+
+            using (FileStream stream = new FileStream(path, FileMode.Open, FileAccess.Read))
+            {
+                if (position < stream.Length)
+                {
+                    stream.Seek(position, SeekOrigin.Begin);
+                    this.BundlesAndPackagesStore = (BundlesAndPackagesStore)formatter.Deserialize(stream);
+                    position = stream.Position;
+                }
+            }
+            formatter = null;
+        }
+
+        /// <summary>
+        /// Load from a data file stream.
+        /// </summary>
+        ///<param name="stream"></param>
+        public void LoadFromDataFile(Stream stream)
+        {
+            // Generate file name based on configuration and name of the wixpdb
+            long position = 0;
+            // create a new formatter instance
+            var formatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
+
+            if (position < stream.Length)
+            {
+                stream.Seek(position, SeekOrigin.Begin);
+                this.BundlesAndPackagesStore = (BundlesAndPackagesStore)formatter.Deserialize(stream);
+                position = stream.Position;
+            }
+            formatter = null;
         }
 
         /// <summary>
@@ -383,15 +406,6 @@ namespace Microsoft.VS.ConfigurationManager
             return outObj;
         }
 
-        /// <summary>
-        /// Load all files from a given directory into a collection of bundle objects
-        /// </summary>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        public ICollection<Bundle> LoadFromFiles(string value = null)
-        {
-            return FilesToBundles(string.IsNullOrEmpty(value) ? DataFilesPath : value);
-        }
         /// <summary>
         ///      <para>
         ///           Takes a list of InstallableItem and converts it to binary output.
@@ -416,11 +430,33 @@ namespace Microsoft.VS.ConfigurationManager
         }
 
         /// <summary>
-        /// Releases object serialized to disk
+        /// Save BundlesAndPackageStore object to a data file.
         /// </summary>
-        public void SaveAll()
+        public void SaveToDataFile()
         {
-            Save(Releases);
+            // create a new formatter instance
+            var formatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
+
+            string tempDirectory = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+            Directory.CreateDirectory(tempDirectory);
+
+            string fileName = Path.Combine(tempDirectory, "DataFile.bin");
+
+            Console.WriteLine(@"Writing data file to " + fileName);
+
+            try
+            {
+                // open a filestream
+                using (FileStream stream = new FileStream(fileName, FileMode.Create, FileAccess.Write))
+                {
+                    formatter.Serialize(stream, this.BundlesAndPackagesStore);
+                }
+            }catch(Exception e)
+            {
+                Console.WriteLine(@"Failed to write data file to " + fileName + " reason: " + e.Message);
+            }
+
+            Console.WriteLine(string.Format("Writing data file to {0}, completed. ", fileName));
         }
 
         /// <summary>
@@ -454,171 +490,126 @@ namespace Microsoft.VS.ConfigurationManager
 
             return exitcode;
         }
-
+        
         /// <summary>
-        /// Uninstall a specific WiX bundle
+        /// Report what Visual Studio's were installed on this system.
         /// </summary>
-        /// <param name="bundle"></param>
-        /// <returns></returns>
-        [PermissionSet(SecurityAction.LinkDemand, Name = "FullTrust", Unrestricted = false)]
-        public int Uninstall(Bundle bundle)
+        public void InstalledVisualStudioReport()
         {
-            var exitcode = -1;
-            var uninstallactionerrorcode = -1;
-            if (!Processed) { GetDataFromPdb(); }
+            List<Bundle> installedBundles = new List<Bundle>(this.BundlesAndPackagesStore.Bundles.Where(b => b.Installed));
+            var installedBundleStrings = installedBundles.Select<Bundle, string>(b =>
+                String.Format("(Name: {0}, Version: {1}, BundleId: {2})", b.Name, b.Version, b.BundleId)).ToArray();
 
-            if (Releases.Where(x=>x.Selected) != null)
+            if (installedBundleStrings.Count() > 0)
             {
-                try
-                {
-                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "Pre-requisite uninstall actions running"), Logger.MessageLevel.Information, AppName);
-                    uninstallactionerrorcode = UninstallActionExecution(bundle, UninstallAction.TemplateType.Pre);
-                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "Pre-requisite uninstall actions finished"), Logger.MessageLevel.Information, AppName);
-                    switch (uninstallactionerrorcode)
-                    {
-                        case 3010:  // Reboot required
-                            break;
-                        default:
-                            if (!DoNotExecuteProcess)
-                            {
-                                exitcode = bundle.Uninstall();
-                            }
-                            else
-                            {
-                                Logger.Log(String.Format(CultureInfo.InvariantCulture, "Bundle uninstall method bypassed - DoNotExecute is true"), Logger.MessageLevel.Verbose, AppName);
-                                exitcode = 0;
-                            }
-                            Logger.Log(String.Format(CultureInfo.InvariantCulture, "Post-requisite uninstall actions started"), Logger.MessageLevel.Information, AppName);
-                            UninstallActionExecution(bundle, UninstallAction.TemplateType.Post);
-                            Logger.Log(String.Format(CultureInfo.InvariantCulture, "Post-requisite uninstall actions finished"), Logger.MessageLevel.Information, AppName);
-                            break;
-                    }
+                Logger.LogWithOutput(string.Format(@"The following bundles were detected on your system: "), Logger.MessageLevel.Information, AppName);
 
-                }
-                catch (Exception ex)
+                foreach (var ib in installedBundleStrings)
                 {
-                    Logger.Log(ex, AppName);
-                }
-            }
-            else {
-                throw new ConfigurationManagerException("A release has not been selected for use with this method. Please use SelectedReleases to select a Release.");
-            }
-
-            return exitcode;
-        }
-
-        /// <summary>
-        /// Given a list of bundles, run the uninstall on the bundles in sequence
-        /// </summary>
-        /// <param name="bundles"></param>
-        /// <returns></returns>
-        [PermissionSet(SecurityAction.LinkDemand, Name = "FullTrust", Unrestricted = false)]
-        public int Uninstall(ICollection<Bundle> bundles)
-        {
-            var exitcode = -1;
-            if (Releases.Where(x => x.Selected) != null)
-            {
-                try
-                {
-                    foreach (Bundle bundle in bundles.Where(x => x.Installed))
-                    {
-                        exitcode = Uninstall(bundle);
-                        if (exitcode != 0) { break; }
-                    }
-                    exitcode = 0;
-                }
-                catch (Exception ex)
-                {
-                    Logger.Log(ex);
+                    Logger.LogWithOutput(string.Format(ib), Logger.MessageLevel.Information, AppName);
                 }
             }
             else
             {
-                throw new Exception("A release has not been selected for use with this method.  Property UserSelectedReleases needs to be set.");
+                Logger.LogWithOutput(string.Format(@"No bundle found.  Uninstalling stale MSIs. "), Logger.MessageLevel.Information, AppName);
             }
-            return exitcode;
         }
 
-        private int UninstallActionExecution(ICollection<Bundle> bundles, UninstallAction.TemplateType template)
+        /// <summary>
+        /// Uninstall Visual Studio 2013/2015/vNext
+        /// </summary>
+        public int Uninstall()
         {
-            var exitcode = -1;
-            // Only iterate through selected bundles
-            foreach (Bundle bundle in bundles)
+            List<Bundle> installedBundles = new List<Bundle>(this.BundlesAndPackagesStore.Bundles.Where(b => b.Installed));
+
+            List<Bundle> orderedBundles = new List<Bundle>();
+
+            foreach (var ib in installedBundles)
             {
-                exitcode = UninstallActionExecution(bundle, template);
-            }
-
-            return exitcode;
-        }
-
-        private int UninstallActionExecution(Bundle bundle, UninstallAction.TemplateType template)
-        {
-            var DidInstallRun = false;
-            var errorcode = 0;
-            var currenterrorcode = 0;
-            var rebootrequired = false;
-            Logger.Log(String.Format(CultureInfo.InvariantCulture, "Starting Template Type: {0} Bundle: {1}", template.ToString(), bundle.Name), Logger.MessageLevel.Information, AppName);
-            ICollection<UninstallAction> _uas = UninstallActions.Where(x => x.Template == template).ToList();
-            // For each uninstall item, only select those that are either before or after the main uninstall process
-            // and match the machine OS and Architecture.  This is defined by the template parameter.
-            // Only for given machine architecture
-            Logger.Log(String.Format(CultureInfo.InvariantCulture, "Uninstall actions found: {0}", _uas.Count().ToString(CultureInfo.InvariantCulture)), Logger.MessageLevel.Verbose, AppName);
-
-            foreach (UninstallAction ua in _uas)
-            {
-                foreach (ArchitectureConfiguration ac in ua.Architectures)
+                if (!ib.Name.ToLowerInvariant().Contains(@"(kb"))
                 {
-                    if (ac.Value == MachineArchitectureConfiguration.Value)
-                    {
-                        // Only get one OS version that matches to integer value from the OS
-                        foreach (OperatingSystemConfiguration osc in ua.OS)
-                        {
-                            if (osc.Value == MachineOSVersion)
-                            {
-                                // Uninstall the selected package
-                                foreach (Package package in bundle.Packages.Where(x => x.ProductCode == ua.ProductCode))
-                                {
-                                    if (!DoNotExecuteProcess) {
-                                        Logger.Log(String.Format(CultureInfo.InvariantCulture, "Package found to match architecture and OS: {0}", package.ProductName), Logger.MessageLevel.Information, AppName);
-                                        currenterrorcode = package.Uninstall();
-                                        DidInstallRun = true;
+                    orderedBundles.Add(ib);
+                }
+            }
 
-                                        switch (currenterrorcode)
-                                        {
-                                            case 0:
-                                                errorcode = currenterrorcode;
-                                                break;
-                                            case 3010:
-                                                Logger.Log(String.Format(CultureInfo.InvariantCulture, "Reboot required"), Logger.MessageLevel.Information, AppName);
-                                                errorcode = currenterrorcode;
-                                                rebootrequired = true;
-                                                break;
-                                            default:
-                                                Logger.Log(String.Format(CultureInfo.InvariantCulture, "Exitcode: {0}  Returned Error code: {1}", errorcode.ToString(CultureInfo.InvariantCulture), currenterrorcode.ToString(CultureInfo.InvariantCulture)), Logger.MessageLevel.Information, AppName);
-                                                errorcode = errorcode == 3010 ? errorcode : currenterrorcode;
-                                                break;
-                                        }
-                                        break;
-                                    }
-                                }
-                            }
-                        }
+            foreach (var ib in installedBundles)
+            {
+                if (ib.Name.ToLowerInvariant().Contains(@"(kb"))
+                {
+                    orderedBundles.Add(ib);
+                }
+            }
+
+            foreach (var ib in orderedBundles)
+            {
+                int exitCode = 0;
+                if (!this.DoNotExecuteProcess)
+                {
+                    try
+                    {
+                        exitCode = ib.Uninstall();
+                    }
+                    catch(Exception ex)
+                    {
+                        Logger.LogWithOutput(
+                            string.Format("Bundle: {0} uninstalled failed with exception: {1}. ", ib.Name, ex.Message));
                     }
                 }
-                if (
-                    (errorcode != 0 || errorcode != 3010) // Did we get a non-zero error code
-                    && DidInstallRun                      // Was an installer run?
-                   )                                      // If so, we need to break the loop as the user likely has an action to take
+                Logger.LogWithOutput(string.Format("Bundle: {0} has been uninstalled with exit code: {1}. ", ib.Name, exitCode));
+
+                if (exitCode == 3010)
                 {
-                    // Allow reboot required to drop out like a success.  This will allow all pre-requisite installers to complete regardless of a reboot being required.
-                    //  - Break out on all other error codes.  Any other status is a hard error that needs to be handled outside of this process.
-                    break;
+                    return exitCode;
                 }
             }
-            errorcode = errorcode != 0 ? errorcode : rebootrequired ? 3010 : errorcode;
-            return errorcode;
-        }
 
+            Logger.LogWithOutput("Normal Visual Studio Uninstall completed.");
+            Logger.LogWithOutput("Searching for stale MSIs and clean up stale MSIs.");
+
+            var installedPackages = this.GetAllInstalledItems();
+            List<Package> packagesToBeUninstalled = new List<Package>();
+
+            foreach(var ip in installedPackages)
+            {
+                if (this.BundlesAndPackagesStore.UpgradeCodeHash.Contains(ip.UpgradeCode))
+                {
+                    packagesToBeUninstalled.Add(ip);
+                }
+                else if (this.BundlesAndPackagesStore.NoUpgradeCodeProductCodeHash.Contains(ip.ProductCode))
+                {
+                    packagesToBeUninstalled.Add(ip);
+                }
+            }
+
+            if (packagesToBeUninstalled.Count > 0)
+            {
+                Logger.LogWithOutput(string.Format("{0} stale MSIs found.  Uninstalling them.", packagesToBeUninstalled.Count ));
+
+                int count = packagesToBeUninstalled.Count;
+                foreach (var p in packagesToBeUninstalled)
+                {
+                    int rc = 0;
+
+                    if (!this.DoNotExecuteProcess)
+                    {
+                        try
+                        {
+                            rc = p.Uninstall();
+                        }
+                        catch(Exception ex)
+                        {
+                            Logger.LogWithOutput(
+                                 string.Format("Msi: {0} uninstalled failed with exception: {1}. ", p.ProductName, ex.Message));
+                        }
+                    }
+                    count--;
+                    Logger.LogWithOutput(string.Format("Uninstalled {0} with exit code: {1}. {2}/{3}", p.ProductName, rc, count, packagesToBeUninstalled.Count));
+                }
+            }
+
+            return 0;
+        }
+        
         #endregion Public Methods
 
         #region Protected Methods
@@ -629,7 +620,9 @@ namespace Microsoft.VS.ConfigurationManager
             if (!disposed)
             {
                 if (disposing) {
-                    releases = null;
+                    BundlesAndPackagesStore.UpgradeCodeHash = null;
+                    BundlesAndPackagesStore.NoUpgradeCodeProductCodeHash = null;
+                    BundlesAndPackagesStore.Bundles = null;
                     ut.Dispose();
                 }
             }
@@ -643,7 +636,7 @@ namespace Microsoft.VS.ConfigurationManager
 
         private const string CHAINMSIPACKAGE = "ChainMsiPackage";
 
-        private const string CHAINPACKAGEINFO = "ChainPackageInfo";
+        private const string UXPACKAGEBEHAVIOR = "UxPackageBehavior";
 
         private const string FILETYPE_WIXPDB = "WixPdb";
 
@@ -663,8 +656,6 @@ namespace Microsoft.VS.ConfigurationManager
 
         private ICollection<Package> installedmsis = new List<Package>();
 
-        private ICollection<Bundle> releases = new List<Bundle>();
-
         private string releaseoutput = string.Empty;
 
         private Utility ut = new Utility();
@@ -672,9 +663,43 @@ namespace Microsoft.VS.ConfigurationManager
         #endregion Private Fields
 
         #region Private Methods
-        private static ICollection<Package> GetMSIDataFromTable(Bundle bundle, Wix.Table chainmsipackageTable, Wix.Table cpiTable)
+        private void GetUniquePackages(HashSet<string> upgradeCodeHash, 
+            HashSet<string> noUpgradeCodeProductCodeHash,
+            Wix.Table chainmsipackageTable, 
+            Wix.Table uxPackageBehavior)
         {
-            try {
+            try
+            {
+                Dictionary<string, string> uxPackageBehaviorDict = new Dictionary<string, string>();
+                if (uxPackageBehavior != null)
+                {
+                    foreach (Wix.Row msirow in uxPackageBehavior.Rows)
+                    {
+                        string packageId = string.Empty;
+                        string reallyPerm = string.Empty;
+                        foreach (Wix.Field field in msirow.Fields)
+                        {
+                            switch (field.Column.Name.ToString(CultureInfo.InvariantCulture).ToUpperInvariant())
+                            {
+                                case "PackageId":
+                                    packageId = field.Data.ToString();
+                                    break;
+                                case "ReallyPermanent": // nullable.
+                                    if (field.Data != null)
+                                    {
+                                        reallyPerm = field.Data.ToString();
+                                    }
+                                    break;
+
+                            }
+                        }
+                        if (!string.IsNullOrEmpty(packageId) && !uxPackageBehaviorDict.ContainsKey(packageId))
+                        {
+                            uxPackageBehaviorDict.Add(packageId, reallyPerm);
+                        }
+                    }
+                }
+
                 foreach (Wix.Row msirow in chainmsipackageTable.Rows)
                 {
                     var msi = new Package();
@@ -691,6 +716,12 @@ namespace Microsoft.VS.ConfigurationManager
                                 msi.ProductCode = field.Data.ToString();
                                 break;
 
+                            case "UPGRADECODE": // nullable.
+                                if (field.Data != null)
+                                {
+                                    msi.UpgradeCode = field.Data.ToString();
+                                }
+                                break;
                             case "PRODUCTVERSION":
                                 msi.ProductVersion = field.Data.ToString();
                                 break;
@@ -705,55 +736,33 @@ namespace Microsoft.VS.ConfigurationManager
                                 break;
                         }
                     }
-                    bundle.Packages.Add(msi);
-                }
 
-                if (cpiTable != null)
-                {
-                    foreach (Wix.Row packageinforow in cpiTable.Rows)
+                    // if the package is really perm, then, don't uninstall it.
+                    if (!string.IsNullOrEmpty(msi.ChainingPackage)
+                        && uxPackageBehaviorDict.ContainsKey(msi.ChainingPackage)
+                        && uxPackageBehaviorDict[msi.ChainingPackage].Equals("yes", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (packageinforow.Fields[1].Data.ToString().ToUpperInvariant() == "MSU")
+                        continue;
+                    }
+
+                    if (string.IsNullOrEmpty(msi.UpgradeCode))
+                    {
+                        noUpgradeCodeProductCodeHash.Add(msi.ProductCode);
+                    }
+                    else
+                    {
+                        if (!upgradeCodeHash.Contains(msi.UpgradeCode))
                         {
-                            var msu = new Package();
-
-                            foreach (Wix.Field field in packageinforow.Fields)
-                            {
-                                switch (field.Column.Name.ToString(CultureInfo.InvariantCulture).ToUpperInvariant())
-                                {
-                                    case "ID": // id 0
-                                        msu.ChainingPackage = field.Data.ToString();
-                                        break;
-
-                                    case "MSUKB": // id 13
-                                        msu.ProductCode = field.Data.ToString().Replace("KB", "");
-                                        break;
-
-                                    case "VERSION": // id 25
-                                        msu.ProductVersion = (field.Data != null) ? field.Data.ToString() : "";
-                                        break;
-
-                                    case "DISPLAYNAME": // id 27
-                                        msu.ProductName = (field.Data != null) ? field.Data.ToString() : "";
-                                        break;
-                                    case "PACKAGETYPE": // id 1
-                                        msu.Type = Package.PackageType.MSU;
-                                        break;
-                                    default:
-                                        break;
-                                }
-                            }
-
-                            bundle.Packages.Add(msu);
+                            upgradeCodeHash.Add(msi.UpgradeCode);
                         }
                     }
                 }
+                // We should not be uninstalling MSU because they are usually perm and they are windows comp.
             }
             catch (Exception ex)
             {
                 Logger.Log(ex);
             }
-
-            return bundle.Packages;
         }
 
         static private Bundle FileToBundle(string file)
@@ -778,137 +787,59 @@ namespace Microsoft.VS.ConfigurationManager
             return installable;
         }
 
-        private ICollection<Bundle> FilesToBundles(string directory, string ext = FILETYPE_BIN)
-        {
-            ICollection<Bundle> outObj = new List<Bundle>();
-            var di = new DirectoryInfo(directory);
-            try
-            {
-                Logger.Log(String.Format(CultureInfo.InvariantCulture, "Loading files from: {0}", directory), Logger.MessageLevel.Information, AppName);
-                Releases.Clear();
-
-                if (!di.Exists)
-                {
-                    var msg = "Directory provided does not exist!";
-                    throw new DirectoryNotFoundException(msg);
-                }
-                else
-                {
-                    // Iterate through all the BIN files in the given directory. In case one is
-                    // passed in which is incorrect, the ReadFile function is wrapped in a try
-                    // catch.
-                    var allfiles = System.IO.Directory.GetFiles(directory);
-                    var files = Array.FindAll(allfiles, s => s.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
-
-                    foreach (var file in files) { Releases.Add(FileToBundle(file)); }
-                }
-            }
-            catch (DirectoryNotFoundException dex)
-            {
-                Logger.Log(dex.Message, Logger.MessageLevel.Warning, AppName);
-            }
-            catch (Exception ex)
-            {
-                Logger.Log(ex, AppName);
-            }
-            finally
-            {
-                di = null;
-            }
-            ReleaseOutput = GetReleases;
-            Processed = true;
-            Logger.Log(String.Format(CultureInfo.InvariantCulture, "Files loaded", directory), Logger.MessageLevel.Information, AppName);
-
-            return outObj;
-        }
-
-        private void GetContent(ref ICollection<Bundle> rels, string path)
+        /// <summary>
+        /// Load a wixpdb
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
+        public bool LoadFromWixpdb(string path)
         {
             try
             {
-                if (Directory.Exists(@"content"))
+                // Get all files associated with WixPDBs in directory
+                Logger.Log(String.Format(CultureInfo.InvariantCulture, "Loading {0}", path), Logger.MessageLevel.Information, "Utility");
+                var pdb = Wix.Pdb.Load(Path.GetFullPath(path), true, true);
+                var bundlerowinfo = (Wix.WixBundleRow)GetBundlesFromWixPDB(pdb).Rows[0];
+
+                var bundle = new Bundle(bundlerowinfo.BundleId, bundlerowinfo.Name, bundlerowinfo.Version, Path.GetFileNameWithoutExtension(path), Path.GetFullPath(path), FILETYPE_WIXPDB, false);
+                if (!this.BundlesAndPackagesStore.Bundles.Any(b => b.BundleId == bundle.BundleId))
                 {
-                    if (Directory.GetFiles(@"content").Length != 0)
-                    {
-                        ICollection<string> list = new List<string>(Directory.GetFiles(@"content"));
-
-                        rels = new List<Bundle>();
-                        foreach (string entry in list)
-                        {
-                            try
-                            {
-                                // Get all files associated with WixPDBs in directory
-                                Logger.Log(String.Format(CultureInfo.InvariantCulture, "Loading {0}", entry), Logger.MessageLevel.Information, "Utility");
-                                Wix.Pdb.Load(Path.GetFullPath(entry), true, true);
-                                var bundlerowinfo = (Wix.WixBundleRow)GetBundlesFromWixPDB(entry).Rows[0];
-
-                                var newrel = new Bundle(bundlerowinfo.BundleId, bundlerowinfo.Name, bundlerowinfo.Version, Path.GetFileNameWithoutExtension(entry), Path.GetFullPath(entry), FILETYPE_WIXPDB, false);
-                                rels.Add(newrel);
-
-                                bundlerowinfo = null;
-                            }
-                            catch(Exception e)
-                            {
-                                Logger.Log("Unable to load wixpdb: " + entry, Logger.MessageLevel.Error);
-                                Logger.Log(e);
-                            }
-                        }
-                    }
+                    this.BundlesAndPackagesStore.Bundles.Add(bundle);
                 }
-                if (Directory.Exists(path) && Directory.GetFiles(path).Length != 0)
+
+                if (pdb.Output.Type == Wix.OutputType.Bundle)
                 {
-                    // Get all already processed files available Get working directory iterate
-                    // through remove
+                    var wixbundle = pdb.Output.Tables[WIXBUNDLE];  //Id: 32 in pdb.Output.Rows
+                    var chainmsipackageTable = pdb.Output.Tables[CHAINMSIPACKAGE]; //Id: 0 in pdb.Output.Rows
+                    var uxPackageBehavior = pdb.Output.Tables[UXPACKAGEBEHAVIOR]; //Id: 0 in pdb.Output.Rows
 
-                    foreach (string fileitem in Directory.GetFiles(path))
+                    if (wixbundle != null)
                     {
-                        // Does a PDB exist for the file that we are reading?
-                        var filenamewithoutextension = Path.GetFileNameWithoutExtension(fileitem);
-
-                        if (releases.Where(x => x.Name == filenamewithoutextension).Count() != 0)
+                        if (chainmsipackageTable != null)
                         {
-                            // Update values to use the file instead
-                            releases.First(x => x.Name == filenamewithoutextension).FileType = FILETYPE_BIN;
-                            releases.First(x => x.Name == filenamewithoutextension).binPath = Path.Combine(path, fileitem);
-                        }
-                        else // If there is no wixpdb does not exist, pull data from the file to populate releases
-                        {
-                            try
-                            {
-                                var tempbundle = FileToBundle(fileitem);
-
-                                var rel = new Bundle(tempbundle.BundleId, tempbundle.Name, tempbundle.Version, "", path, FILETYPE_BIN, false, tempbundle.Packages)
-                                {
-                                    binPath = Path.Combine(path, fileitem)
-                                };
-                                rels.Add(rel);
-                                tempbundle = null;
-                                rel = null;
-                            }
-                            catch(Exception e)
-                            {
-                                Logger.Log("Unable to load bundle file: " + fileitem, Logger.MessageLevel.Error);
-                                Logger.Log(e);
-                            }
+                            this.GetUniquePackages(
+                                this.BundlesAndPackagesStore.UpgradeCodeHash, 
+                                this.BundlesAndPackagesStore.NoUpgradeCodeProductCodeHash, 
+                                chainmsipackageTable, 
+                                uxPackageBehavior);
                         }
                     }
                 }
 
+                bundlerowinfo = null;
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                Logger.Log(ex);
+                Logger.Log("Unable to load wixpdb: " + path, Logger.MessageLevel.Error);
+                Logger.Log(e);
+                return false;
             }
-            finally
-            {
-            }
+            return true;
         }
 
-        private static Wix.Table GetBundlesFromWixPDB(string entry)
-        {
-            var pdb = Wix.Pdb.Load(Path.GetFullPath(entry), true, false);
+        private static Wix.Table GetBundlesFromWixPDB(Microsoft.Tools.WindowsInstallerXml.Pdb pdb)
+        { 
             var wixbundle = pdb.Output.Tables[WIXBUNDLE];  //Id: 32 in pdb.Output.Rows
-            pdb = null;
             return wixbundle;
         }
 
@@ -937,138 +868,7 @@ namespace Microsoft.VS.ConfigurationManager
                 }
             }
         }
-
-        /// <summary> <para>This internal function returns a list of installable items based on a
-        /// pre-selected list of releases passed in.</para> <para>It can take an array of releases
-        /// or a single release. Pass in no value for release and it will return for all configured
-        /// releases.</para>
-        /// <para>List of Release (class) rels - Metadata from Initialize procedure filtered
-        /// by public calls.</para>
-        /// </summary>
-        /// <param name="rels"></param>
-        /// <param name="getall"></param>
-        /// <returns>List Bundle</returns>
-        private ICollection<Bundle> GetDataFromPdb(ICollection<Bundle> rels, bool getall)
-        {
-            ICollection<Bundle> installables = new List<Bundle>();
-            Logger.Log("GetDataFromPdb started.");
-
-            Logger.Log(String.Format(CultureInfo.InvariantCulture, " - Select releases: {0}", Releases.Count(x => x.Selected).ToString(CultureInfo.InvariantCulture)));
-            Logger.Log(String.Format(CultureInfo.InvariantCulture, " - Get all WixPdbs: {0}", getall.ToString(CultureInfo.InvariantCulture)));
-            if (Releases.Count(x => x.Selected) != 0 || getall)
-            {
-                try
-                {
-                    Logger.Log(String.Format(CultureInfo.InvariantCulture, " -- Releases: {0}", rels == null ? "Null" : rels.Count().ToString(CultureInfo.InvariantCulture)));
-                    if (releases == null || releases.ElementAt(0).Packages == null || getall)
-                    {
-                        if ((rels == null) || (releases == null))
-                        {
-                            GetContent(ref releases, DataFilesPath);
-                        }
-
-                        if (getall)
-                        {
-                            rels = Releases;
-                        }
-
-                        foreach (Bundle rel in rels)
-                        {
-                            var filetype = rel.FileType;
-                            var filepath = (filetype == FILETYPE_WIXPDB) ? rel.Path : rel.binPath;
-                            if (getall)
-                            {
-                                filetype = FILETYPE_WIXPDB;
-                                filepath = rel.Path;
-                            }
-                            if (File.Exists(filepath))
-                            {
-                                GetDataFromSource(installables, rel, filetype, filepath);
-                            }
-                            else
-                            {
-                                throw new FileNotFoundException(String.Format(CultureInfo.InvariantCulture, "Error File Not Found: {0}", rel.Path), rel.Path);
-                            }
-                        }
-                        Logger.Log(String.Format(CultureInfo.InvariantCulture, "Installables count: {0}", installables.Count().ToString(CultureInfo.InvariantCulture), AppName));
-                        releases = installables;
-                    }
-                    else
-                    {
-                        installables = releases;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Logger.Log(ex);
-                }
-            }
-            else
-            {
-                var msg = "A release has not been selected for use with this method.  Property UserSelectedReleases needs to be set.";
-                Logger.Log(msg);
-                throw new Exception(msg);
-            }
-
-            Processed = true;
-            Logger.Log("GetDataFromPdb ended.");
-            SaveAll();
-            installables = getall ? installables : installables.Where(x => x.Selected).ToList();
-            return installables;
-        }
-
-        private void GetDataFromSource(ICollection<Bundle> installables, Bundle rel, string filetype, string filepath)
-        {
-            switch (filetype)
-            {
-                case FILETYPE_WIXPDB:
-                    var pdb = Wix.Pdb.Load(filepath, false, false);
-                    if (pdb.Output.Type == Wix.OutputType.Bundle)
-                    {
-                        var wixbundle = pdb.Output.Tables[WIXBUNDLE];  //Id: 32 in pdb.Output.Rows
-                        var chainmsipackageTable = pdb.Output.Tables[CHAINMSIPACKAGE]; //Id: 0 in pdb.Output.Rows
-                        var ChainPackageInfoTable = pdb.Output.Tables[CHAINPACKAGEINFO]; //Id: 0 in pdb.Output.Rows
-
-                        if (wixbundle != null)
-                        {
-                            var bundlerow = (Wix.WixBundleRow)wixbundle.Rows[0];
-                            var bundle = new Bundle(bundlerow.BundleId, bundlerow.Name, bundlerow.Version);
-                            bundlerow = null;
-                            if (chainmsipackageTable != null)
-                            {
-                                GetMSIDataFromTable(bundle, chainmsipackageTable, ChainPackageInfoTable);
-                            }
-                            bundle.Selected = rel.Selected;
-                            Logger.Log(String.Format(CultureInfo.InvariantCulture, "Successfully loaded: {0} [{1}]", rel.Name, FILETYPE_WIXPDB));
-                            installables.Add(bundle);
-                        }
-                    }
-                    break;
-
-                case FILETYPE_BIN:
-                    var binload = LoadFromFile(filepath);
-
-                    rel.FileType = string.IsNullOrEmpty(rel.FileType) ? binload.FileType : rel.FileType;
-                    rel.BundleId = rel.BundleId.ToString().Count() == 0 ? binload.BundleId : rel.BundleId;
-
-                    if (rel.Packages == null) // if the Packages object is null, we have no MSIs listed in the bundle
-                    {
-                        foreach (Package package in binload.Packages)
-                        {
-                            rel.Packages.Add(package);
-                        }
-                    }
-                    rel.Name = string.IsNullOrEmpty(rel.Name) ? binload.Name : rel.Name;
-                    rel.binPath = binload.Path;
-                    rel.ReleasePdb = string.IsNullOrEmpty(rel.ReleasePdb) ? binload.ReleasePdb : rel.ReleasePdb;
-                    rel.Version = rel.Version == null ? binload.Version : rel.Version;
-                    rel.Selected = rel.Selected ? rel.Selected : binload.Selected;
-
-                    installables.Add(rel);
-                    Logger.Log(String.Format(CultureInfo.InvariantCulture, "Successfully loaded: {0} [{1}]", rel.Name, FILETYPE_BIN));
-                    break;
-            }
-        }
+        
         #endregion Private Methods
     }
 }

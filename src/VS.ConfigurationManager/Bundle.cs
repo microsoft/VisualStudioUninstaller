@@ -16,14 +16,42 @@ namespace Microsoft.VS.ConfigurationManager
         private const string AppName = "Bundle";
 
         // TODO: do these vars need to be static?
-        static private string temp;
-        static private string programdata;
-        static private string LogLocation;
-        static private string packagecache;
-        static private string cache = string.Empty;
-        static private bool regcheck;
+        private string Temp
+        {
+            get
+            {
+                return System.IO.Path.GetTempPath();
+            }
+        }
+        private static string ProgramData
+        {
+            get
+            {
+                return Environment.GetEnvironmentVariable("ALLUSERSPROFILE");
+            }
+        }
+        private string LogLocation
+        {
+            get
+            {
+                return System.IO.Path.Combine(Temp, @"dd_Uninstall");
+            }
+        }
+        private static string PackageCache
+        {
+            get
+            {
+                if (!regcheck) // if there is no registry value for package cache, it will return an empty string resulting in all bundles requiring a registry read.
+                {
+                    cache = String.IsNullOrEmpty(cache) && !regcheck ? Utility.ReadRegKey(PackageCacheRegistryPath, PackageCacheValue.Replace(" ", "")) : cache;
+                    regcheck = true;
+                }
+                return String.IsNullOrEmpty(cache) ? System.IO.Path.Combine(ProgramData, PackageCacheValue) : cache;
+            }
+        }
+        private static string cache = string.Empty;
+        private static bool regcheck;
 
-        private string bundleuninstallarguments = "/uninstall /force /Passive /Log \"{0}\"";
         private System.Guid bundleid;
 
         // TODO: Refactor constructors to use defaults.
@@ -32,7 +60,6 @@ namespace Microsoft.VS.ConfigurationManager
         public Bundle()
         {
             SetObjectVariables();
-            Packages = new List<Package>();
         }
 
         /// <summary>Bundle creation with values being passed in before hand.</summary>
@@ -42,7 +69,6 @@ namespace Microsoft.VS.ConfigurationManager
         public Bundle(System.Guid bundleid, string name, string version)
         {
             Initialize(bundleid, name, version);
-            Packages = new List<Package>();
         }
 
         /// <summary>Bundle creation for all parameters being passed in.</summary>
@@ -57,11 +83,8 @@ namespace Microsoft.VS.ConfigurationManager
         public Bundle(System.Guid bundleid, string name, string version, string releasepdb, string path, string filetype, bool selected, ICollection<Package> packages)
         {
             Initialize(bundleid, name, version);
-            ReleasePdb = releasepdb;
-            Path = path;
             FileType = filetype;
             Selected = selected;
-            Packages = packages;
         }
         /// <summary>
         /// Creating a bundle without passing package information
@@ -76,11 +99,8 @@ namespace Microsoft.VS.ConfigurationManager
         public Bundle(System.Guid bundleid, string name, string version, string releasepdb, string path, string filetype, bool selected)
         {
             Initialize(bundleid, name, version);
-            ReleasePdb = releasepdb;
-            Path = path;
             FileType = filetype;
             Selected = selected;
-            Packages = new List<Package>();
         }
 
         private void Initialize(System.Guid passedbundleid, string name, string version)
@@ -95,16 +115,6 @@ namespace Microsoft.VS.ConfigurationManager
         // TODO: does this need to be static.
         static private void SetObjectVariables()
         {
-            temp = System.IO.Path.GetTempPath();
-            programdata = Environment.GetEnvironmentVariable("ALLUSERSPROFILE");
-
-            LogLocation = System.IO.Path.Combine(temp, @"Uninstall");
-            if (!regcheck) // if there is no registry value for package cache, it will return an empty string resulting in all bundles requiring a registry read.
-            {
-                cache = String.IsNullOrEmpty(cache) && !regcheck ? Utility.ReadRegKey(PackageCacheRegistryPath, PackageCacheValue.Replace(" ", "")) : cache;
-                regcheck = true;
-            }
-            packagecache = String.IsNullOrEmpty(cache) ? System.IO.Path.Combine(programdata, PackageCacheValue) : cache;
         }
 
         /// <summary>
@@ -113,8 +123,7 @@ namespace Microsoft.VS.ConfigurationManager
         /// </summary>
         public string BundleUninstallArguments
         {
-            get { return bundleuninstallarguments; }
-            set { bundleuninstallarguments = value.TrimEnd() + " "; }
+            get { return "/uninstall /force /Q /Log \"{0}\""; }
         }
         /// <summary>Location of the package cache on disk</summary>
         public string LocalInstallLocation { get; set; }
@@ -126,12 +135,9 @@ namespace Microsoft.VS.ConfigurationManager
             set
             {
                 bundleid = value;
-                LocalInstallLocation = System.IO.Path.Combine(packagecache, '{' + BundleId.ToString() + '}');
+                LocalInstallLocation = System.IO.Path.Combine(PackageCache, '{' + BundleId.ToString() + '}');
             }
         }
-
-        /// <summary>List of MSI (class) that includes all MSIs in the WiX bundle.</summary>
-        public ICollection<Package> Packages { get; set; }
 
         /// <summary>WiX Bundle Product Name</summary>
         public string Name { get; set; }
@@ -144,23 +150,14 @@ namespace Microsoft.VS.ConfigurationManager
         /// <summary>Is the bundle installed?</summary>
         public bool Installed
         {
-            get { return _installed; }
+            get {
+                LocalInstallLocation = System.IO.Path.Combine(PackageCache, '{' + BundleId.ToString() + '}');
+                return Directory.Exists(LocalInstallLocation) ? true : false;
+            }
         }
 
         /// <summary>Has the user selected this item for uninstall?</summary>
         public bool Selected { get; set; }
-        /// <summary>
-        /// Path to directory for the wixpdb/config file that created bundle
-        /// </summary>
-        public string Path { get; set; }
-        /// <summary>
-        /// Name of the WixPDB
-        /// </summary>
-        public string ReleasePdb { get; set; }
-        /// <summary>
-        /// Location of the serialized config file
-        /// </summary>
-        public string binPath { get; set; }
 
         private bool _installed;
 
@@ -182,11 +179,12 @@ namespace Microsoft.VS.ConfigurationManager
                     Logger.Log("Bundle uninstall called and bundle is installed.", Logger.MessageLevel.Information, AppName);
                     foreach (string file in Directory.GetFiles(LocalInstallLocation, "*.exe"))
                     {
-                        var bundlelogfilename = System.IO.Path.ChangeExtension(LogLocation + "_" + System.IO.Path.GetFileNameWithoutExtension(file), "log");
+                        var bundlelogfilename =  LogLocation + "_" + System.IO.Path.ChangeExtension(System.IO.Path.GetFileNameWithoutExtension(file), "log");
                         Logger.Log(String.Format(CultureInfo.InvariantCulture, "Installer: {0}", file), Logger.MessageLevel.Information, AppName);
                         var args = String.Format(CultureInfo.InvariantCulture, BundleUninstallArguments, bundlelogfilename);
                         Logger.Log(String.Format(CultureInfo.InvariantCulture, "Arguments: {0}", args), Logger.MessageLevel.Information, AppName);
 
+                        Logger.LogWithOutput(string.Format("Uninstalling: {0}", file));
                         exitcode = Utility.ExecuteProcess(file, args);
                         if (exitcode == 0)
                             Logger.Log("Uninstall succeeded");

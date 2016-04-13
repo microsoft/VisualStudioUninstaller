@@ -51,6 +51,10 @@ namespace Microsoft.VS.ConfigurationManager
         /// </summary>
         public String ProductCode { get; set; }
         /// <summary>
+        /// WiX MSI upgrade code
+        /// </summary>
+        public String UpgradeCode { get; set; }
+        /// <summary>
         /// Wix MSI Product Name
         /// </summary>
         public string ProductName { get; set; }
@@ -90,6 +94,7 @@ namespace Microsoft.VS.ConfigurationManager
         /// <summary>
         /// Passing in all fields on creation of an instance
         /// </summary>
+        /// <param name="upgradecode"></param>
         /// <param name="productcode"></param>
         /// <param name="productversion"></param>
         /// <param name="productname"></param>
@@ -97,7 +102,28 @@ namespace Microsoft.VS.ConfigurationManager
         /// <param name="installDate"></param>
         /// <param name="installLocation"></param>
         /// <param name="url"></param>
-        public Package(string productcode, string productversion, string productname, string chainingpackage, DateTime installDate, string installLocation, System.Uri url)
+        public Package(string upgradecode, string productcode, string productversion, string productname, string chainingpackage)
+        {
+            Initialize();
+            Type = PackageType.MSI;
+            UpgradeCode = upgradecode;
+            ProductCode = productcode;
+            ProductVersion = productversion;
+            ProductName = productname;
+            ChainingPackage = chainingpackage;
+        }
+
+        /// <summary>
+        /// Passing in all fields on creation of an instance
+        /// </summary>
+        /// <param name="productcode"></param>
+        /// <param name="productversion"></param>
+        /// <param name="productname"></param>
+        /// <param name="chainingpackage"></param>
+        /// <param name="installDate"></param>
+        /// <param name="installLocation"></param>
+        /// <param name="url"></param>
+        public Package(string productcode, string productversion, string productname, string chainingpackage)
         {
             Initialize();
             Type = PackageType.MSI;
@@ -105,9 +131,6 @@ namespace Microsoft.VS.ConfigurationManager
             ProductVersion = productversion;
             ProductName = productname;
             ChainingPackage = chainingpackage;
-            InstallDate = installDate;
-            InstallLocation = installLocation;
-            Url = url;
         }
         /// <summary>
         /// Overloaded value to allow a different value for PackageType to be set.
@@ -120,7 +143,7 @@ namespace Microsoft.VS.ConfigurationManager
         /// <param name="installLocation"></param>
         /// <param name="url"></param>
         /// <param name="type"></param>
-        public Package(string productcode, string productversion, string productname, string chainingpackage, DateTime installDate, string installLocation, System.Uri url, PackageType type)
+        public Package(string productcode, string productversion, string productname, string chainingpackage, PackageType type)
         {
             Initialize();
             Type = type;
@@ -128,9 +151,6 @@ namespace Microsoft.VS.ConfigurationManager
             ProductVersion = productversion;
             ProductName = productname;
             ChainingPackage = chainingpackage;
-            InstallDate = installDate;
-            InstallLocation = installLocation;
-            Url = url;
         }
         #endregion Public Constructors
 
@@ -181,7 +201,7 @@ namespace Microsoft.VS.ConfigurationManager
             {
                 case PackageType.MSI:
                     Logger.Log(String.Format(CultureInfo.InvariantCulture, "Installer: {0}", this.ProductName), Logger.MessageLevel.Information, AppName);
-                    var msilogfilename = System.IO.Path.ChangeExtension(LogLocation + "_" + this.ProductName.Replace("", "").ToString(), "log");
+                    var msilogfilename = LogLocation + "_" + System.IO.Path.ChangeExtension(this.NormalizeProductName(this.ProductName), "log");
                     // Run msiexec from the system path only.
                     file = System.IO.Path.Combine(systemdir, msiEXEname);
                     // Quiet uninstall with no restart requested and logging enabled
@@ -235,13 +255,18 @@ namespace Microsoft.VS.ConfigurationManager
             return exitcode;
         }
 
+        private string NormalizeProductName(string productName)
+        {
+            return productName.Replace(" ", string.Empty).Replace("/", string.Empty);
+        }
+
         #endregion Public Methods
 
         static private void Initialize()
         {
             systemdir = Environment.SystemDirectory;
             temp = System.IO.Path.GetTempPath();
-            LogLocation = System.IO.Path.Combine(temp, @"Uninstall");
+            LogLocation = System.IO.Path.Combine(temp, @"dd_Uninstall");
         }
     }
 }
