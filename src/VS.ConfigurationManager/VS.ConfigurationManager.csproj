@@ -60,7 +60,7 @@
     <Content Include="External\wix.dll" />
   </ItemGroup>
   <ItemGroup>
-    <FilesToSign Include="$(OutDir)\VS.ConfigurationManager.dll">
+    <FilesToSign Include="$(OutDir)\Setup.VS.ConfigurationManager.dll">
       <Authenticode>Microsoft</Authenticode>
     </FilesToSign>
   </ItemGroup>

@@ -56,7 +56,7 @@
     <Folder Include="Properties\" />
   </ItemGroup>
   <ItemGroup>
-    <FilesToSign Include="$(OutDir)\VS.ConfigurationManager.Support.dll">
+    <FilesToSign Include="bin\Release\VS.ConfigurationManager.Support.dll">
       <Authenticode>Microsoft</Authenticode>
     </FilesToSign>
   </ItemGroup>
