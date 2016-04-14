@@ -1,5 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="..\..\packages\MicroBuild.Core.0.2.0\build\MicroBuild.Core.props" Condition="Exists('..\..\packages\MicroBuild.Core.0.2.0\build\MicroBuild.Core.props')" />
   <Import Project="$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildProjectDirectory), Uninstaller.sln))\lib\Common.props" />
   <PropertyGroup>
     <ApplicationManifest>app.manifest</ApplicationManifest>
@@ -57,6 +58,7 @@
     <EmbeddedResource Include="DataFile.bin">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
@@ -84,4 +86,12 @@
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(SolutionDir)lib\Common.targets" />
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('..\..\packages\MicroBuild.Core.0.2.0\build\MicroBuild.Core.props')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\MicroBuild.Core.0.2.0\build\MicroBuild.Core.props'))" />
+    <Error Condition="!Exists('..\..\packages\MicroBuild.Core.0.2.0\build\MicroBuild.Core.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\MicroBuild.Core.0.2.0\build\MicroBuild.Core.targets'))" />
+  </Target>
+  <Import Project="..\..\packages\MicroBuild.Core.0.2.0\build\MicroBuild.Core.targets" Condition="Exists('..\..\packages\MicroBuild.Core.0.2.0\build\MicroBuild.Core.targets')" />
 </Project>
