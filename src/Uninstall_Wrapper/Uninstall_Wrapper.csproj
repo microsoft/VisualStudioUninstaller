@@ -69,6 +69,11 @@
     <Folder Include="Properties\" />
   </ItemGroup>
   <ItemGroup>
+    <FilesToSign Include="$(OutDir)\Setup.ForcedUninstall.exe">
+      <Authenticode>Microsoft</Authenticode>
+    </FilesToSign>
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="$(SourceDir)\VS.ConfigurationManager.Support\VS.ConfigurationManager.Support.csproj">
       <Project>{13c73873-a5ed-42de-97f0-a3b2d7a1d76f}</Project>
       <Name>VS.ConfigurationManager.Support</Name>

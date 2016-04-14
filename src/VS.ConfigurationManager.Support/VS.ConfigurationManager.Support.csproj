@@ -55,5 +55,10 @@
   <ItemGroup>
     <Folder Include="Properties\" />
   </ItemGroup>
+  <ItemGroup>
+    <FilesToSign Include="$(OutDir)\VS.ConfigurationManager.Support.dll">
+      <Authenticode>Microsoft</Authenticode>
+    </FilesToSign>
+  </ItemGroup>
   <Import Project="$(SolutionDir)lib\Common.targets" />
 </Project>
