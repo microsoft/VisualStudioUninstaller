@@ -176,46 +176,40 @@ namespace Microsoft.VS.Uninstaller
         private static IEnumerable<string> GetVisualStudioInstallationDirs()
         {
             List<string> vsDirs = new List<string>();
-            if (Environment.Is64BitOperatingSystem)
-            {
-                vsDirs.Add((string)Registry.GetValue(
-                   "HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\Microsoft\\VisualStudio\\12.0\\",
-                    "InstallDir",
-                    null));
-                vsDirs.Add((string)Registry.GetValue(
-                   "HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\Microsoft\\VisualStudio\\14.0\\",
-                    "InstallDir",
-                    null));
-                vsDirs.Add((string)Registry.GetValue(
-                   "HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\Microsoft\\VisualStudio\\15.0\\",
-                    "InstallDir",
-                    null));
-            }
-            else
-            {
-                vsDirs.Add((string)Registry.GetValue(
-                   "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\VisualStudio\\12.0\\",
-                  "InstallDir",
-                  null));
-                vsDirs.Add((string)Registry.GetValue(
-                   "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\VisualStudio\\14.0\\",
-                  "InstallDir",
-                  null));
-                vsDirs.Add((string)Registry.GetValue(
-                   "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\VisualStudio\\15.0\\",
-                  "InstallDir",
-                  null));
-            }
+
+            var vsVers = new string[] { "12.0", "14.0", "15.0" };
 
             // %AppData%\Microsoft\VisualStudio\14.0 & 12.0 & 15.0
             // %LocalAppData%\Microsoft\VisualStudio\14.0 & 12.0 & 15.0
             // %LocalAppData%\Microsoft\VSCommon\14.0 & 12.0 & 15.0
             var appDataRoot = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             var localAppDataRoot = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            var vsVers = new string[] { "12.0", "14.0", "15.0" };
 
             foreach (var vsVer in vsVers)
             {
+                if (Environment.Is64BitOperatingSystem)
+                {
+                    var installDir = (string)Registry.GetValue(
+                       string.Format("HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\Microsoft\\VisualStudio\\{0}\\", vsVer),
+                        "InstallDir",
+                        null);
+                    if (!string.IsNullOrEmpty(installDir))
+                    {
+                        vsDirs.Add(installDir);
+                    }
+                }
+                else
+                {
+                    var installDir = (string)Registry.GetValue(
+                      string.Format("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\VisualStudio\\{0}\\", vsVer),
+                      "InstallDir",
+                      null);
+                    if (!string.IsNullOrEmpty(installDir))
+                    {
+                        vsDirs.Add(installDir);
+                    }
+                }
+
                 vsDirs.Add(Path.Combine(appDataRoot, "Microsoft", "VisualStudio", vsVer));
                 vsDirs.Add(Path.Combine(localAppDataRoot, "Microsoft", "VisualStudio", vsVer));
                 vsDirs.Add(Path.Combine(localAppDataRoot, "Microsoft", "VSCommon", vsVer));

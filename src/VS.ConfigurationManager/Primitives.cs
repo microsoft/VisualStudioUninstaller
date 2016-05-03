@@ -174,7 +174,7 @@ namespace Microsoft.VS.ConfigurationManager
             {
                 try
                 {
-                    if (Directory.Exists(path) && !this.DoNotExecuteProcess)
+                    if (!string.IsNullOrEmpty(path) && Directory.Exists(path) && !this.DoNotExecuteProcess)
                     {
                         Logger.LogWithOutput(string.Format("Deleting: {0}", path));
                         this.RecursivelyDeleteFolder(path);
