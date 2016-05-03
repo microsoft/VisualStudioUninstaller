@@ -191,7 +191,7 @@ namespace Microsoft.VS.Uninstaller
                 {
                     var installDir = (string)Registry.GetValue(
                        string.Format("HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\Microsoft\\VisualStudio\\{0}\\", vsVer),
-                        "InstallDir",
+                        "ShellFolder",
                         null);
                     if (!string.IsNullOrEmpty(installDir))
                     {
@@ -202,7 +202,7 @@ namespace Microsoft.VS.Uninstaller
                 {
                     var installDir = (string)Registry.GetValue(
                       string.Format("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\VisualStudio\\{0}\\", vsVer),
-                      "InstallDir",
+                      "ShellFolder",
                       null);
                     if (!string.IsNullOrEmpty(installDir))
                     {
