@@ -165,6 +165,29 @@ namespace Microsoft.VS.ConfigurationManager
         }
 
         /// <summary>
+        /// Clean up Visual Studio folders.
+        /// </summary>
+        /// <param name="vsInstallPaths"></param>
+        public void CleanupVisualStudioFolders(IEnumerable<string> vsInstallPaths)
+        {
+            foreach (var path in vsInstallPaths)
+            {
+                try
+                {
+                    if (!string.IsNullOrEmpty(path) && Directory.Exists(path) && !this.DoNotExecuteProcess)
+                    {
+                        Logger.LogWithOutput(string.Format("Deleting: {0}", path));
+                        this.RecursivelyDeleteFolder(path);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWithOutput(string.Format("Cannot delete Secondary Installer cache with error: {0}", ex.Message));
+                }
+            }
+        }
+
+        /// <summary>
         /// Clean up HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\VisualStudio 
         /// Clean up HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\VisualStudio
         /// </summary>
@@ -173,7 +196,11 @@ namespace Microsoft.VS.ConfigurationManager
             var keyPaths = new string[] {
                 @"SOFTWARE\Microsoft\VisualStudio\12.0",
                 @"SOFTWARE\Microsoft\VisualStudio\14.0",
-                @"SOFTWARE\Microsoft\VisualStudio\15.0" };
+                @"SOFTWARE\Microsoft\VisualStudio\15.0",
+                @"SOFTWARE\Microsoft\VisualStudio\12.0_Config",
+                @"SOFTWARE\Microsoft\VisualStudio\14.0_Config",
+                @"SOFTWARE\Microsoft\VisualStudio\15.0_Config",
+            };
 
             foreach(var keyPath in keyPaths)
             {
@@ -194,6 +221,12 @@ namespace Microsoft.VS.ConfigurationManager
                 x86View.DeleteSubKeyTree(keyPath, false);
 
                 var x64View = Win32.RegistryKey.OpenBaseKey(Win32.RegistryHive.LocalMachine, Win32.RegistryView.Registry64);
+                x64View.DeleteSubKeyTree(keyPath, false);
+
+                x86View = Win32.RegistryKey.OpenBaseKey(Win32.RegistryHive.CurrentUser, Win32.RegistryView.Registry32);
+                x86View.DeleteSubKeyTree(keyPath, false);
+
+                x64View = Win32.RegistryKey.OpenBaseKey(Win32.RegistryHive.CurrentUser, Win32.RegistryView.Registry64);
                 x64View.DeleteSubKeyTree(keyPath, false);
             }
             catch (Exception ex)
@@ -219,14 +252,6 @@ namespace Microsoft.VS.ConfigurationManager
             {
                 Logger.LogWithOutput(string.Format("Cannot delete Secondary Installer cache with error: {0}", ex.Message));
             }
-        }
-
-        /// <summary>
-        /// Clean up sub-folders in %ProgramData%\Package Cache created by Visual Studio.
-        /// </summary>
-        public void CleanupVisualStudioPackageCache()
-        {
-            // TBD
         }
 
         private static string CommonApplicationDataDirectory
