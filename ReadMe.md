@@ -12,7 +12,7 @@ This app finds and uninstall every Preview/RC/RTM releases of Visual Studio 2013
 
 Status
 ========
-Shipping
+Shipped
 
 Contributing and building this project
 ========
@@ -24,7 +24,7 @@ Our goal is to provide a way to thoroughly and reliably remove Visual Studio.  T
 
 Mailing list/contacts/forums
 ========
-TBD
+https://www.visualstudio.com/support/support-overview-vs 
 
 Usage
 ========
@@ -60,11 +60,11 @@ To get the most out of the debug experience, I recommend the following:
 
 Roadmap
 ========
-TBD
+1. Periodically update of the Total Uninstaller to ensure the data used for uninstallation is up to date with the most recent Visual Studio releases.
 
 Open issues
 ========
-TBD
+There's currently no known major issue with the latest release.  
 
 Guidelines
 =========
