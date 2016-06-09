@@ -5,6 +5,8 @@ This executable is designed to cleanup/scorch all Preview/RC/RTM releases of Vis
 
 Running this application will break Visual Studio 2012 and earlier versions of Visual Studio because Visual Studio 2012 have some MSIs that have the same upgrade codes as Visual Studio 2013 and above.
 
+Download: https://github.com/Microsoft/VisualStudioUninstaller/releases
+
 How it works?
 ========
 
