@@ -200,6 +200,9 @@ namespace Microsoft.VS.ConfigurationManager
                 @"SOFTWARE\Microsoft\VisualStudio\12.0_Config",
                 @"SOFTWARE\Microsoft\VisualStudio\14.0_Config",
                 @"SOFTWARE\Microsoft\VisualStudio\15.0_Config",
+                @"SOFTWARE\Microsoft\DevDiv\vs\Servicing\12.0",
+                @"SOFTWARE\Microsoft\DevDiv\vs\Servicing\14.0",
+                @"SOFTWARE\Microsoft\DevDiv\vs\Servicing\15.0",
             };
 
             foreach(var keyPath in keyPaths)
