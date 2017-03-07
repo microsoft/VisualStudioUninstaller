@@ -1,16 +1,16 @@
-﻿Visual Studio Uninstaller
+Visual Studio Uninstaller
 =========
 
-This executable is designed to cleanup/scorch all Preview/RC/RTM releases of Visual Studio 2013, Visual Studio 2015 and Visual Studio vNext.  It should be used as the last resort to clean up the user's system before resorting to reimaging the machine. 
+This executable is designed to clean up and delete Preview, RC and final releases of Visual Studio 2013 and Visual Studio 2015, as well as early previews of Visual Studio 2017. It is designed to be used as a final resort to clean up a system of remaining artifacts from a non-successful installation, instead of having to reimage the machine.
 
-Running this application will break Visual Studio 2012 and earlier versions of Visual Studio because Visual Studio 2012 have some MSIs that have the same upgrade codes as Visual Studio 2013 and above.
+WARNING: running this application may stop earlier remaining installations of Visual Studio 2012 and earlier from working, because Visual Studio 2012 and below share MSI upgrade code with Visual Studio 2013 and above.
 
 Download: https://github.com/Microsoft/VisualStudioUninstaller/releases
 
 How it works?
 ========
 
-This app finds and uninstall every Preview/RC/RTM releases of Visual Studio 2013/2015/vNext.  It will first execute uninstall command on the bundle, and then it will uninstall any stale MSIs.  The application contains a master list of Bundle IDs and upgrade codes for every MSI ever chained in by Visual Studio 2013-vNext.  It will not uninstall MSU or MSIs that marked as ReallyPermanent.  
+This app finds and uninstall every Preview/RC/RTM release of Visual Studio 2013 / 2015 and 2017.  It will first execute uninstall command on the bundle, and then it will uninstall any stale MSIs. The application contains a master list of Bundle IDs and upgrade codes for every MSI ever chained in by Visual Studio 2013-2017.  It will not uninstall MSU or MSIs that marked as ReallyPermanent.  
 
 Status
 ========
@@ -66,12 +66,11 @@ Roadmap
 
 Open issues
 ========
-There's currently no known major issue with the latest release.  
+Please file an issue request as necessary.
 
 Guidelines
 =========
-
-These are general guidelines for source code within this solution.
+These are general guidelines for source code within this solution:
 
 Native code
 -----------
