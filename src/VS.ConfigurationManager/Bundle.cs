@@ -201,14 +201,14 @@ namespace Microsoft.VS.ConfigurationManager
         }
         
         private int ExecuteUninstallProcess(string file)
-	    {
-		    var bundlelogfilename = LogLocation + "_" + System.IO.Path.ChangeExtension(System.IO.Path.GetFileNameWithoutExtension(file), "log");
-			Logger.Log(String.Format(CultureInfo.InvariantCulture, "Installer: {0}", file), Logger.MessageLevel.Information, AppName);
-		    var args = String.Format(CultureInfo.InvariantCulture, BundleUninstallArguments, bundlelogfilename);
-		    Logger.Log(String.Format(CultureInfo.InvariantCulture, "Arguments: {0}", args), Logger.MessageLevel.Information, AppName);
+        {
+            var bundlelogfilename = LogLocation + "_" + System.IO.Path.ChangeExtension(System.IO.Path.GetFileNameWithoutExtension(file), "log");
+            Logger.Log(String.Format(CultureInfo.InvariantCulture, "Installer: {0}", file), Logger.MessageLevel.Information, AppName);
+            var args = String.Format(CultureInfo.InvariantCulture, BundleUninstallArguments, bundlelogfilename);
+            Logger.Log(String.Format(CultureInfo.InvariantCulture, "Arguments: {0}", args), Logger.MessageLevel.Information, AppName);
 
-		    Logger.LogWithOutput(string.Format("Uninstalling: {0}", file));
-		    return Utility.ExecuteProcess(file, args);
-		}
+            Logger.LogWithOutput(string.Format("Uninstalling: {0}", file));
+            return Utility.ExecuteProcess(file, args);
+        }
     }
 }
