@@ -1,7 +1,7 @@
 Visual Studio Uninstaller
 =========
 
-This executable is designed to clean up and delete Preview, RC and final releases of Visual Studio 2013 and Visual Studio 2015, as well as early previews of Visual Studio 2017. It is designed to be used as a final resort to clean up a system of remaining artifacts from a non-successful installation, instead of having to reimage the machine.
+This executable is designed to clean up and delete Preview, RC and final releases of Visual Studio 2013 and Visual Studio 2015. It is designed to be used as a final resort to clean up a system of remaining artifacts from a non-successful installation, instead of having to reimage the machine.
 
 WARNING: running this application may stop earlier remaining installations of Visual Studio 2012 and earlier from working, because Visual Studio 2012 and below share MSI upgrade code with Visual Studio 2013 and above.
 
@@ -10,7 +10,7 @@ Download: https://github.com/Microsoft/VisualStudioUninstaller/releases
 How it works?
 ========
 
-This app finds and uninstall every Preview/RC/RTM release of Visual Studio 2013 / 2015 and 2017.  It will first execute uninstall command on the bundle, and then it will uninstall any stale MSIs. The application contains a master list of Bundle IDs and upgrade codes for every MSI ever chained in by Visual Studio 2013-2017.  It will not uninstall MSU or MSIs that marked as ReallyPermanent.  
+This app finds and uninstall every Preview/RC/RTM release of Visual Studio 2013 and 2015.  It will first execute uninstall command on the bundle, and then it will uninstall any stale MSIs. The application contains a master list of Bundle IDs and upgrade codes for every MSI ever chained in by Visual Studio 2013-2015.  It will not uninstall MSU or MSIs that marked as ReallyPermanent.  
 
 Status
 ========
@@ -22,7 +22,7 @@ See CONTRIBUTING.md
 
 Goals/Vision/Scope
 ========
-Our goal is to provide a way to thoroughly and reliably remove Visual Studio.  This program first attempts to force uninstall Visual Studio from top down, and then remove any remaining MSIs and MSUs.  This program will work on any BURN based Visual Studio; that means this program is only capable of removing Visual Studio 2012 and above.
+Our goal is to provide a way to thoroughly and reliably remove Visual Studio.  This program first attempts to force uninstall Visual Studio from top down, and then remove any remaining MSIs and MSUs.  This program will work on any BURN based Visual Studio; that means this program is only capable of removing Visual Studio 2012 - 2015.
 
 Mailing list/contacts/forums
 ========
@@ -86,5 +86,3 @@ Managed code
 
 Please follow these coding standards:
 https://msdn.microsoft.com/en-us/library/Ff926074.aspx?f=255&MSPPError=-2147217396
-
-
