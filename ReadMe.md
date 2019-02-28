@@ -18,7 +18,7 @@ Shipped
 
 Contributing and building this project
 ========
-See CONTRIBUTING.md
+See [CONTRIBUTING.md](https://github.com/Microsoft/VisualStudioUninstaller/blob/master/CONTRIBUTING.md)
 
 Goals/Vision/Scope
 ========
